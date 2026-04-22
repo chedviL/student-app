@@ -3,7 +3,7 @@ import { Search, List, Database } from "lucide-react";
 import { motion } from "framer-motion";
 import "./HomePage.css";
 import logo from "../assets/logo.png";
-import heroImage from "../assets/hero.jpg";
+import heroImage from "../assets/hero.JPG";
 
 const containerVariants = {
   hidden: { opacity: 0 },
