@@ -1,0 +1,236 @@
+.lists-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top center, rgba(255, 241, 210, 0.5), transparent 28%),
+    linear-gradient(180deg, #f9f3e7 0%, #f3e7d1 100%);
+  padding: 34px 18px 40px;
+}
+
+.lists-shell {
+  max-width: 1600px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.lists-logo {
+  width: 120px;
+  height: auto;
+  display: block;
+  margin: 0 auto 12px;
+  filter: drop-shadow(0 6px 12px rgba(114, 63, 25, 0.18));
+}
+
+.lists-logo-corner {
+  position: absolute;
+  top: 16px;
+  left: 24px;
+  width: 80px;
+  height: auto;
+  filter: drop-shadow(0 4px 8px rgba(114, 63, 25, 0.18));
+}
+
+.lists-header {
+  text-align: center;
+  margin-bottom: 26px;
+  position: relative;
+}
+
+.lists-title {
+  margin: 0;
+  font-size: 48px;
+  font-weight: 900;
+  color: #5b331a;
+  text-shadow: 0 2px 10px rgba(255, 255, 255, 0.35);
+}
+
+.lists-subtitle {
+  margin: 12px auto 0;
+  max-width: 760px;
+  font-size: 18px;
+  color: #7a5536;
+  line-height: 1.5;
+}
+
+.lists-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding: 18px 20px;
+  border-radius: 22px;
+  background: rgba(255, 250, 242, 0.82);
+  border: 1px solid rgba(219, 189, 137, 0.35);
+  box-shadow: 0 14px 30px rgba(92, 53, 23, 0.08);
+  backdrop-filter: blur(8px);
+  direction: rtl;
+}
+
+.lists-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.lists-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: #6a4327;
+}
+
+.lists-select {
+  min-width: 240px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1px solid #d9b980;
+  background: #fffdf8;
+  color: #4c2b16;
+  font-size: 15px;
+  outline: none;
+  cursor: pointer;
+}
+
+.lists-select:focus {
+  border-color: #c58a46;
+  box-shadow: 0 0 0 4px rgba(197, 138, 70, 0.14);
+}
+
+.lists-count {
+  font-size: 15px;
+  font-weight: 700;
+  color: #7a5536;
+}
+
+.lists-count span {
+  color: #4c2415;
+  font-size: 18px;
+}
+
+.lists-state,
+.lists-error {
+  text-align: center;
+  margin-top: 22px;
+  font-size: 17px;
+}
+
+.lists-error {
+  color: #a33620;
+  font-weight: 700;
+}
+
+.lists-table-card {
+  background: rgba(255, 251, 245, 0.9);
+  border: 1px solid rgba(219, 189, 137, 0.36);
+  border-radius: 28px;
+  padding: 20px;
+  box-shadow: 0 18px 40px rgba(92, 53, 23, 0.1);
+}
+
+.lists-table-wrapper {
+  overflow-x: auto;
+  border-radius: 18px;
+}
+
+.students-table {
+  width: 100%;
+  min-width: 1450px;
+  border-collapse: collapse;
+  background: #fffdf9;
+  overflow: hidden;
+}
+
+.students-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, #6d3f22 0%, #57311a 100%);
+  color: #fff4dc;
+  font-size: 15px;
+  font-weight: 800;
+  padding: 14px 12px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.students-table tbody td {
+  padding: 13px 12px;
+  text-align: center;
+  border-bottom: 1px solid #eddcc0;
+  color: #4d2d18;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.students-table tbody tr:nth-child(even) {
+  background: rgba(249, 241, 227, 0.52);
+}
+
+.students-table tbody tr:hover {
+  background: rgba(245, 224, 183, 0.24);
+}
+
+.id-cell {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+@media (max-width: 900px) {
+  .lists-page {
+    padding: 22px 10px 28px;
+  }
+
+  .lists-title {
+    font-size: 34px;
+  }
+
+  .lists-subtitle {
+    font-size: 16px;
+  }
+
+  .lists-toolbar {
+    padding: 14px;
+  }
+
+  .lists-select {
+    min-width: 200px;
+  }
+
+  .lists-table-card {
+    padding: 12px;
+    border-radius: 20px;
+  }
+}
+.lists-input {
+  min-width: 220px;
+
+  padding: 10px 14px;
+
+  border-radius: 14px;
+
+  border: 1px solid #d9b980;
+
+  background: #fffdf8;
+
+  color: #4c2b16;
+
+  font-size: 15px;
+
+  outline: none;
+}
+
+.lists-input:focus {
+  border-color: #c58a46;
+
+  box-shadow:
+    0 0 0 4px rgba(197, 138, 70, 0.14);
+}
+.clickable-row {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.clickable-row:hover {
+  background: rgba(245, 224, 183, 0.34);
+}
