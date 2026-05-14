@@ -472,6 +472,27 @@ input {
   text-align: center;
 }
 
+.profile-value a {
+  color: var(--gold);
+  text-decoration: none;
+  border-bottom: 1.5px solid rgba(200, 134, 63, 0.4);
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.profile-value a:hover {
+  color: var(--brown);
+  border-bottom-color: var(--brown);
+}
+
+.phone-copy {
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.phone-copy:hover {
+  color: var(--gold);
+}
+
 .student-note-box {
   margin-top: 18px;
   background: rgba(255, 253, 248, 0.8);

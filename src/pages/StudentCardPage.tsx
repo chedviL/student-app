@@ -33,6 +33,13 @@ export default function StudentCardPage() {
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  function copyPhone(phone: string) {
+    navigator.clipboard.writeText(phone);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   useEffect(() => {
     async function loadStudents() {
@@ -143,7 +150,13 @@ export default function StudentCardPage() {
 
             <motion.div className="profile-item" variants={itemVariants}>
               <span className="profile-label">טלפון אב</span>
-              <span className="profile-value">{student.fatherPhone || "-"}</span>
+              <span
+                className="profile-value phone-copy"
+                onClick={() => student.fatherPhone && copyPhone(student.fatherPhone)}
+                title="לחץ להעתקה"
+              >
+                {copied ? "✔ הועתק!" : (student.fatherPhone || "-")}
+              </span>
             </motion.div>
 
             <motion.div className="profile-item" variants={itemVariants}>
@@ -165,7 +178,11 @@ export default function StudentCardPage() {
 
             <motion.div className="profile-item" variants={itemVariants}>
               <span className="profile-label">מייל</span>
-              <span className="profile-value">{student.email || "-"}</span>
+              <span className="profile-value">
+                {student.email
+                  ? <a href={`https://mail.google.com/mail/?view=cm&to=${student.email}`} target="_blank" rel="noreferrer">{student.email}</a>
+                  : "-"}
+              </span>
             </motion.div>
 
             <motion.div className="profile-item" variants={itemVariants}>

@@ -10,29 +10,24 @@ interface ApiResponse<T> {
 
 async function handleResponse<T>(response: Response): Promise<T> {
   const json: ApiResponse<T> = await response.json();
-
-  if (!json.success) {
-    throw new Error(json.error || "Request failed");
-  }
-
+  if (!json.success) throw new Error(json.error || "Request failed");
   return json.data;
 }
 
+let studentsCache: Student[] | null = null;
+let cacheTime: number | null = null;
+const CACHE_TTL = 5 * 60 * 1000; // 5 דקות
+
 export async function getStudents(): Promise<Student[]> {
+  const now = Date.now();
+  if (studentsCache && cacheTime && now - cacheTime < CACHE_TTL) return studentsCache;
   const response = await fetch(`${BASE_URL}?action=list`);
-  return handleResponse<Student[]>(response);
+  studentsCache = await handleResponse<Student[]>(response);
+  cacheTime = now;
+  return studentsCache;
 }
 
-export async function searchStudents(query: string): Promise<Student[]> {
-  const response = await fetch(
-    `${BASE_URL}?action=search&q=${encodeURIComponent(query)}`
-  );
-  return handleResponse<Student[]>(response);
-}
-
-export async function getStudentById(id: string): Promise<Student | null> {
-  const response = await fetch(
-    `${BASE_URL}?action=getById&id=${encodeURIComponent(id)}`
-  );
-  return handleResponse<Student | null>(response);
+export function clearStudentsCache() {
+  studentsCache = null;
+  cacheTime = null;
 }
