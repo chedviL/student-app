@@ -233,7 +233,7 @@ export default function SortedListsPage() {
     const fields = ALL_FIELDS.filter(f => selectedFields.has(f.key));
     const headers = fields.map(f => f.label);
     const rows = sortedStudents.map(s =>
-      fields.map(f => String((s as Record<string, unknown>)[f.key] || ""))
+      fields.map(f => String((s as unknown as Record<string, unknown>)[f.key] || ""))
     );
 
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
