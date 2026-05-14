@@ -16,7 +16,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
 
 let studentsCache: Student[] | null = null;
 let cacheTime: number | null = null;
-const CACHE_TTL = 5 * 60 * 1000; // 5 דקות
+const CACHE_TTL = 24 * 60 * 60 * 1000; // יום שלם
 
 export async function getStudents(): Promise<Student[]> {
   const now = Date.now();
