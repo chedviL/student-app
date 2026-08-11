@@ -1,5 +1,5 @@
 import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, type Transition } from "framer-motion";
 import { useEffect } from "react";
 import Navbar from "../components/common/Navbar";
 import HomePage from "../pages/HomePage";
@@ -9,11 +9,12 @@ import StudentCardPage from "../pages/StudentCardPage";
 import EditPage from "../pages/EditPage";
 
 // אנימציה עדינה — fade בלבד, ללא תזוזת y שגורמת לקפיצות
+const trans: Transition = { duration: 0.2, ease: "easeInOut" };
 const pageTransition = {
   initial:    { opacity: 0 },
   animate:    { opacity: 1 },
   exit:       { opacity: 0 },
-  transition: { duration: 0.2, ease: "easeInOut" as const },
+  transition: trans,
 };
 
 // גלילה לראש העמוד בכל מעבר ניווט

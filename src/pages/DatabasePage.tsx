@@ -224,7 +224,7 @@ function EditableCell({
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function DatabasePage() {
-  const { students: raw, loading, error, updateLocal } = useStudents();
+  const { students: raw, loading, error } = useStudents();
   const navigate = useNavigate();
 
   const [query, setQuery] = useState("");

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Pencil, Users, User, Search, ChevronRight,
@@ -125,7 +126,7 @@ function normalize(t: string) {
 }
 
 function SectionIcon({ name, size = 22 }: { name: string; size?: number }) {
-  const icons: Record<string, JSX.Element> = {
+  const icons: Record<string, React.ReactNode> = {
     User:       <User size={size} />,
     Phone:      <Phone size={size} />,
     BookOpen:   <BookOpen size={size} />,
