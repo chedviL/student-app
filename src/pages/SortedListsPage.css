@@ -6,6 +6,10 @@
   padding: 34px 18px 40px;
 }
 
+.lists-page.with-navbar {
+  padding-top: calc(62px + 34px);
+}
+
 .lists-shell {
   max-width: 1600px;
   margin: 0 auto;
@@ -131,6 +135,19 @@
 .lists-table-wrapper {
   overflow-x: auto;
   border-radius: 18px;
+  overflow-y: visible;
+}
+
+/* גלילה אופקית בלבד */
+.lists-table-scroll {
+  overflow-x: auto;
+  border-radius: 18px;
+}
+
+/* מאפשר תפריטי סינון לצאת מגבולות הטבלה */
+.lists-table-inner {
+  overflow: visible;
+  position: relative;
 }
 
 .students-table {
@@ -138,13 +155,18 @@
   min-width: 1450px;
   border-collapse: collapse;
   background: #fffdf9;
-  overflow: hidden;
+  overflow: visible;
+}
+
+.students-table thead {
+  position: relative;
+  z-index: 10;
 }
 
 .students-table thead th {
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 20;
   background: linear-gradient(180deg, #6d3f22 0%, #57311a 100%);
   color: #fff4dc;
   font-size: 15px;
@@ -152,6 +174,7 @@
   padding: 14px 12px;
   text-align: center;
   white-space: nowrap;
+  overflow: visible;
 }
 
 .students-table tbody td {
@@ -235,6 +258,23 @@
   background: rgba(245, 224, 183, 0.34);
 }
 
+/* ── Row fade-in animation ── */
+@keyframes rowFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.table-row-animate {
+  opacity: 0;
+  animation: rowFadeIn 0.28s ease forwards;
+}
+
 .filter-dropdown {
   position: relative;
   display: inline-block;
@@ -265,7 +305,7 @@
   position: absolute;
   top: calc(100% + 4px);
   right: 0;
-  z-index: 100;
+  z-index: 200;
   background: #fffdf8;
   border: 1px solid #d9b980;
   border-radius: 12px;

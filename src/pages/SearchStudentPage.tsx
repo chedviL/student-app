@@ -1,10 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { getStudents } from "../api/studentsApi";
-import type { Student } from "../types/student";
-import logo from "../assets/logo.png";
 import { useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
+import { useStudents } from "../context/StudentsContext";
 import "./SearchStudentPage.css";
 
 function normalize(text: string | undefined) {
@@ -51,27 +49,9 @@ const itemVariants = {
 };
 
 export default function SearchStudentPage() {
-  const [allStudents, setAllStudents] = useState<Student[]>([]);
+  const { students: allStudents, loading, error } = useStudents();
   const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-const navigate = useNavigate();
-  useEffect(() => {
-    async function loadStudents() {
-      try {
-        setLoading(true);
-        setError("");
-        const data = await getStudents();
-        setAllStudents(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "אירעה שגיאה");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadStudents();
-  }, []);
+  const navigate = useNavigate();
 
   const filteredStudents = useMemo(() => {
     const normalizedQuery = normalize(query);
@@ -117,7 +97,7 @@ const navigate = useNavigate();
 
   return (
     <motion.div
-      className="search-page"
+      className="search-page with-navbar"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
@@ -128,13 +108,6 @@ const navigate = useNavigate();
         initial="hidden"
         animate="visible"
       >
-        <motion.header className="search-header" variants={itemVariants}>
-          <button className="home-button" onClick={() => navigate("/")}>
-            לדף הבית
-          </button>
-          <img src={logo} alt="לוגו הישיבה" className="search-logo" />
-        </motion.header>
-
         <motion.section className="search-toolbar" variants={itemVariants}>
           <div className="search-input-wrap">
             <Search size={20} className="search-icon" />

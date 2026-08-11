@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Search, List, Database } from "lucide-react";
+import { Search, Database, Pencil } from "lucide-react";
 import { motion } from "framer-motion";
 import "./HomePage.css";
 import logo from "../assets/logo.png";
@@ -32,7 +32,7 @@ export default function HomePage() {
 
   return (
     <motion.div
-      className="landing-page"
+      className="landing-page with-navbar"
       style={{ backgroundImage: `url(${heroImage})` }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -73,65 +73,53 @@ export default function HomePage() {
             whileTap={{ scale: 0.98 }}
           >
             <div className="landing-card-top-line" />
-
             <div className="landing-card-orb">
               <Search size={28} />
             </div>
-
             <h2 className="landing-card-title">חיפוש</h2>
-
             <p className="landing-card-text">
               איתור תלמידים לפי שם, משפחה או מספר זהות
             </p>
-
             <span className="landing-card-link">כניסה</span>
           </motion.button>
 
           <motion.button
             type="button"
             className="landing-card"
-            onClick={() => navigate("/lists")}
+            onClick={() => navigate("/database")}
             variants={itemVariants}
             whileHover={{ boxShadow: "0 8px 25px rgba(0,0,0,0.15)" }}
             whileTap={{ scale: 0.98 }}
           >
             <div className="landing-card-top-line" />
-
-            <div className="landing-card-orb">
-              <List size={28} />
-            </div>
-
-            <h2 className="landing-card-title">רשימות</h2>
-
-            <p className="landing-card-text">
-              צפייה מסודרת ברשימות ובמיון נתונים
-            </p>
-
-            <span className="landing-card-link">כניסה</span>
-          </motion.button>
-
-          <motion.a
-            className="landing-card"
-            href="https://docs.google.com/spreadsheets/d/1GDAVnNMwI2-Qjwj0AVvWbagKwF27KkwngWlMU55Sb3U/edit?gid=2008713622#gid=2008713622"
-            rel="noreferrer"
-            variants={itemVariants}
-            whileHover={{ boxShadow: "0 8px 25px rgba(0,0,0,0.15)" }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <div className="landing-card-top-line" />
-
             <div className="landing-card-orb">
               <Database size={28} />
             </div>
-
             <h2 className="landing-card-title">מסד נתונים</h2>
-
             <p className="landing-card-text">
-              ניהול ועדכון נתוני תלמידים בממשק מרוכז
+              צפייה, סינון, מיון ועריכה של נתוני התלמידים
             </p>
-
             <span className="landing-card-link">כניסה</span>
-          </motion.a>
+          </motion.button>
+
+          <motion.button
+            type="button"
+            className="landing-card"
+            onClick={() => navigate("/edit")}
+            variants={itemVariants}
+            whileHover={{ boxShadow: "0 8px 25px rgba(0,0,0,0.15)" }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <div className="landing-card-top-line" />
+            <div className="landing-card-orb">
+              <Pencil size={28} />
+            </div>
+            <h2 className="landing-card-title">עריכה</h2>
+            <p className="landing-card-text">
+              עדכון נתונים לתלמיד בודד או לקבוצה בבת אחת
+            </p>
+            <span className="landing-card-link">כניסה</span>
+          </motion.button>
         </motion.section>
       </motion.div>
     </motion.div>

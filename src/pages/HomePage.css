@@ -8,6 +8,12 @@
   filter: brightness(0.75) saturate(0.9);
 }
 
+/* offset for fixed navbar */
+.landing-page.with-navbar {
+  padding-top: 62px;
+  min-height: 100vh;
+}
+
 .landing-page > * {
   filter: brightness(1.33) saturate(1.11);
 }
@@ -148,8 +154,8 @@
 .landing-cards {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 32px;
-  max-width: 1180px;
+  gap: 28px;
+  max-width: 960px;
   width: 100%;
   margin: 0 auto;
   animation: fadeUp 1.2s ease;
@@ -191,8 +197,9 @@ a.landing-card {
 }
 
 .landing-card:nth-child(1) { animation-delay: 0.08s; }
-.landing-card:nth-child(2) { animation-delay: 0.2s; }
-.landing-card:nth-child(3) { animation-delay: 0.32s; }
+.landing-card:nth-child(2) { animation-delay: 0.18s; }
+.landing-card:nth-child(3) { animation-delay: 0.28s; }
+.landing-card:nth-child(4) { animation-delay: 0.38s; }
 
 .landing-card-top-line {
   position: absolute;
@@ -372,13 +379,21 @@ a.landing-card {
 
   .landing-cards {
     grid-template-columns: 1fr;
-    max-width: 560px;
+    max-width: 400px;
+    gap: 18px;
   }
 
-  .landing-card { padding: 30px 22px 26px; }
-  .landing-card-title { font-size: 32px; }
-  .landing-card-text { font-size: 16px; }
+  .landing-card { padding: 24px 18px 20px; }
+  .landing-card-title { font-size: 24px; }
+  .landing-card-text { font-size: 14px; }
   .landing-footer-text { font-size: 18px; }
+}
+
+@media (max-width: 520px) {
+  .landing-cards {
+    grid-template-columns: 1fr;
+    max-width: 400px;
+  }
 }
 
 @media (max-width: 640px) {

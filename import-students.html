@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="UTF-8" />
+  <title>ייבוא תלמידים ל-Supabase</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 40px; max-width: 700px; margin: auto; background: #f5f5f5; }
+    h1 { color: #333; }
+    .box { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    button { background: #4f46e5; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 16px; cursor: pointer; margin-top: 12px; }
+    button:disabled { background: #999; cursor: not-allowed; }
+    #log { background: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 13px; height: 300px; overflow-y: auto; white-space: pre-wrap; direction: ltr; }
+    .success { color: #4ade80; }
+    .error { color: #f87171; }
+    .info { color: #60a5fa; }
+  </style>
+</head>
+<body>
+  <h1>ייבוא תלמידים ל-Supabase</h1>
+  <div class="box">
+    <p>בחרי את קובץ ה-XLSX המקורי:</p>
+    <input type="file" id="fileInput" accept=".xlsx,.xls" />
+    <br />
+    <button id="importBtn">התחל ייבוא</button>
+  </div>
+  <div class="box">
+    <div id="log">ממתין...</div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+  <script>
+    var db = window.supabase.createClient(
+      'https://wwktftuqpwsokjbrtuvw.supabase.co',
+      'sb_publishable_fyMK0wIXhTrzRfe-1I64kg_lf_K3SFQ'
+    );
+
+    // עמודות שכבר באנגלית בקובץ
+    var VALID_DB_COLUMNS = {
+      'last_name': 1, 'first_name': 1, 'class_name': 1, 'email': 1,
+      'community': 1, 'hebrew_date': 1, 'gregorian_date': 1, 'age': 1,
+      'passport_or_id': 1, 'home_phone': 1, 'father_phone': 1, 'mother_phone': 1,
+      'father_name': 1, 'mother_name': 1, 'father_id': 1, 'city': 1, 'street': 1,
+      'tuition': 1, 'tuition_rank': 1, 'siblings': 1, 'payment_method': 1,
+      'payment_status_notes': 1, 'finish_241023': 1, 'end_of_year': 1,
+      'credit': 1, 'bank_transfer': 1, 'fax': 1, 'contact_phone': 1,
+      'contact_address': 1, 'boarding': 1, 'due_date_note': 1,
+      'religion': 1, 'education': 1
+    };
+
+    var COLUMN_MAP = {
+      'משפחה': 'last_name',
+      'שם': 'first_name',
+      'שיעור': 'class_name',
+      'מייל': 'email',
+      'קהילה': 'community',
+      'תאריך עברי': 'hebrew_date',
+      'תאריך לועזי': 'gregorian_date',
+      'גיל': 'age',
+      'ת.ז. / דרכון': 'passport_or_id',
+      'ת.ז. דרכון': 'passport_or_id',
+      'טלפון בית': 'home_phone',
+      'פלפון אב': 'father_phone',
+      'טלפון אב': 'father_phone',
+      'טלפון אמא ': 'mother_phone',
+      'טלפון אמא': 'mother_phone',
+      'שם האב': 'father_name',
+      'שם האם': 'mother_name',
+      'ת.ז. אב': 'father_id',
+      'עיר': 'city',
+      'רחוב': 'street',
+      'שכ"ל': 'tuition',
+      'דירוג שכ"ל': 'tuition_rank',
+      'אחים': 'siblings',
+      'תאריך תחילת גביית שכ"ל': 'due_date_note',
+      'באמצעות': 'payment_method',
+      'סטטוס התשלום, הערות,': 'payment_status_notes',
+      'סטטוס התשלום, הערות': 'payment_status_notes',
+      'פיניש 24.10.23': 'finish_241023',
+      'פקטיבי': 'end_of_year',
+      'סוף שנה - בס"ד': 'end_of_year',
+      'סוף שנה': 'end_of_year',
+      'אשראי': 'credit',
+      'בנקאי': 'bank_transfer',
+      'פקס': 'fax',
+      'איש קשר טלפון': 'contact_phone',
+      'איש קשר כתובת': 'contact_address',
+      'אשראי': 'credit',
+      'בנקאי': 'bank_transfer',
+      'פקס': 'fax',
+      'איש קשר טלפון': 'contact_phone',
+      'איש קשר כתובת': 'contact_address',
+      'לונ': 'boarding',
+      'דתות': 'religion',
+      'חינוך': 'education',
+      'תאריך תחילת גביית שכ"ל': 'due_date_note',
+      'נמ בתאריך 10/03/26': 'due_date_note',
+      'פקטיבי': 'end_of_year',
+      '$/₪ ': 'tuition_currency',
+      '$/₪': 'tuition_currency',
+    };
+
+    function addLog(msg, type) {
+      var el = document.getElementById('log');
+      var line = document.createElement('div');
+      if (type) line.className = type;
+      line.textContent = msg;
+      el.appendChild(line);
+      el.scrollTop = el.scrollHeight;
+    }
+
+    document.getElementById('importBtn').addEventListener('click', function() {
+      var file = document.getElementById('fileInput').files[0];
+      if (!file) {
+        addLog('בחרי קובץ תחילה!', 'error');
+        return;
+      }
+
+      document.getElementById('log').innerHTML = '';
+      document.getElementById('importBtn').disabled = true;
+      addLog('קורא קובץ: ' + file.name, 'info');
+
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          var data = new Uint8Array(e.target.result);
+          var workbook = XLSX.read(data, { type: 'array' });
+          var sheetName = workbook.SheetNames[0];
+          addLog('גיליון: ' + sheetName, 'info');
+
+          var sheet = workbook.Sheets[sheetName];
+          // raw: false — קורא הכל כמחרוזת, שומר אפסים מובילים במספרי טלפון
+          var rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+          addLog('שורות בגיליון: ' + rows.length, 'info');
+
+          // הצג עמודות לאבחון
+          if (rows.length > 0) {
+            addLog('עמודות שנמצאו: ' + Object.keys(rows[0]).join(' | '), 'info');
+          }
+
+          var students = [];
+          var skipped = 0;
+
+          for (var i = 0; i < rows.length; i++) {
+            var row = rows[i];
+            var student = {};
+
+            var keys = Object.keys(row);
+            for (var k = 0; k < keys.length; k++) {
+              var heb = keys[k].trim();
+              var eng = COLUMN_MAP[heb] || (VALID_DB_COLUMNS[heb] ? heb : null);
+              if (eng) {
+                var val = String(row[keys[k]]).trim();
+                if (val && val !== 'undefined') {
+                  student[eng] = val;
+                }
+              }
+            }
+
+            if (!student.last_name && !student.first_name && !student.passport_or_id) {
+              skipped++;
+              continue;
+            }
+
+            student.full_name = ((student.last_name || '') + ' ' + (student.first_name || '')).trim();
+
+            // תיקון אפס מוביל בשדות טלפון — אם המספר 9-10 ספרות ומתחיל ב-5, הוסף 0
+            var PHONE_FIELDS = ['home_phone','father_phone','mother_phone','contact_phone','fax'];
+            for (var p = 0; p < PHONE_FIELDS.length; p++) {
+              var pf = PHONE_FIELDS[p];
+              if (student[pf]) {
+                var digits = student[pf].replace(/\D/g, '');
+                // מספר ישראלי שמתחיל ב-5 (נייד) — חסר האפס
+                if (digits.length === 9 && digits[0] === '5') {
+                  student[pf] = '0' + digits;
+                } else if (digits.length === 8 && (digits[0] === '2' || digits[0] === '3' || digits[0] === '4' || digits[0] === '7' || digits[0] === '8' || digits[0] === '9')) {
+                  // קווי — 8 ספרות בלי 0
+                  student[pf] = '0' + digits;
+                }
+              }
+            }
+
+            students.push(student);
+          }
+
+          addLog('תלמידים תקינים: ' + students.length + ' | דולגו: ' + skipped, 'info');
+
+          uploadBatches(students, 0);
+
+        } catch(err) {
+          addLog('שגיאה: ' + err.message, 'error');
+          document.getElementById('importBtn').disabled = false;
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    function uploadBatches(students, offset) {
+      var BATCH = 50;
+      if (offset >= students.length) {
+        addLog('', '');
+        addLog('=== הייבוא הסתיים בהצלחה! ===', 'success');
+        addLog('סה"כ הועלו: ' + students.length + ' תלמידים', 'success');
+        document.getElementById('importBtn').disabled = false;
+        return;
+      }
+
+      var batch = students.slice(offset, offset + BATCH);
+      addLog('מעלה ' + (offset + 1) + '-' + (offset + batch.length) + '...', 'info');
+
+      db.from('students')
+        .upsert(batch, { onConflict: 'passport_or_id' })
+        .then(function(result) {
+          if (result.error) {
+            addLog('שגיאה: ' + result.error.message, 'error');
+            document.getElementById('importBtn').disabled = false;
+          } else {
+            addLog('✓ ' + batch.length + ' שורות הועלו', 'success');
+            uploadBatches(students, offset + BATCH);
+          }
+        });
+    }
+  </script>
+</body>
+</html>
