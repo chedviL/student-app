@@ -13,6 +13,15 @@ function fmtDate(val: string | undefined): string {
   if (m) return `${m[3]}.${m[2]}.${m[1]}`;
   const m2 = val.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (m2) return `${m2[2].padStart(2,"0")}.${m2[1].padStart(2,"0")}.${m2[3]}`;
+  const n = Number(val);
+  if (!isNaN(n) && n > 1000 && n < 100000) {
+    const excelEpoch = new Date(1899, 11, 30);
+    const date = new Date(excelEpoch.getTime() + n * 86400000);
+    const d = String(date.getDate()).padStart(2, "0");
+    const mo = String(date.getMonth() + 1).padStart(2, "0");
+    const y = date.getFullYear();
+    return `${d}.${mo}.${y}`;
+  }
   return val;
 }
 
