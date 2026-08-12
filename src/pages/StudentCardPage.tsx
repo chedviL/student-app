@@ -300,7 +300,34 @@ export default function StudentCardPage() {
               </motion.div>
             ))}
 
-            {/* מצב שכ"ל — לא עריך עדיין */}
+            {/* תאריך לידה — עברי ולועזי באותו תא */}
+            <motion.div className="profile-item" variants={itemVariants}>
+              <span className="profile-label">תאריך לידה</span>
+              {editMode ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, width: "100%" }}>
+                  <input
+                    className="profile-edit-input"
+                    value={draft.hebrewDate ?? ""}
+                    onChange={(e) => setDraft((d) => ({ ...d, hebrewDate: e.target.value }))}
+                    placeholder="עברי"
+                  />
+                  <input
+                    className="profile-edit-input"
+                    value={draft.gregorianDate ?? ""}
+                    onChange={(e) => setDraft((d) => ({ ...d, gregorianDate: e.target.value }))}
+                    placeholder="לועזי"
+                  />
+                </div>
+              ) : (
+                <span className="profile-value" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  {student.hebrewDate && <span>{student.hebrewDate}</span>}
+                  {student.gregorianDate && <span style={{ direction: "ltr", unicodeBidi: "isolate", fontSize: 14 }}>{student.gregorianDate}</span>}
+                  {!student.hebrewDate && !student.gregorianDate && "-"}
+                </span>
+              )}
+            </motion.div>
+
+            {/* מצב שכ"ל */}
             <motion.div className="profile-item" variants={itemVariants}>
               <span className="profile-label">מצב שכ"ל</span>
               <span className="tuition-badge tuition-neutral">טרם עודכן</span>

@@ -1,10 +1,10 @@
 import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Users, BookOpen, MapPin, Check, X, Loader2, Pencil, Download } from "lucide-react";
+import { Users, BookOpen, MapPin, Check, X, Loader2, Pencil, Download, UserPlus } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useStudents } from "../context/StudentsContext";
-import { updateStudent } from "../api/studentsApi";
+import { updateStudent, createStudent } from "../api/studentsApi";
 import type { Student } from "../types/student";
 import "./DatabasePage.css";
 
@@ -37,6 +37,8 @@ const COLUMNS: ColDef[] = [
   { key: "paymentMethod", label: "אמצעי",        width: 90,  editable: true },
   { key: "paymentStatusNotes", label: "הערות",   width: 140, editable: true },
   { key: "boarding",      label: "פנימייה",      width: 80,  editable: true },
+  { key: "hebrewDate",    label: "תאריך עברי",   width: 110, editable: true },
+  { key: "gregorianDate", label: "תאריך לועזי",  width: 110, editable: true },
 ];
 
 // ─── Filter components (same pattern as SortedListsPage) ─────────────────────
@@ -239,6 +241,10 @@ export default function DatabasePage() {
   const [selectedExportFields, setSelectedExportFields] = useState<Set<string>>(
     new Set(COLUMNS.map((c) => c.key))
   );
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newStudent, setNewStudent] = useState<Partial<Student>>({});
+  const [addSaving, setAddSaving] = useState(false);
+  const [addError, setAddError] = useState("");
 
   // local copy so inline edits reflect immediately without full re-fetch
   const [localStudents, setLocalStudents] = useState<Student[]>([]);
@@ -303,6 +309,25 @@ export default function DatabasePage() {
     setQuery(""); setLastNameFilter(""); setFirstNameFilter("");
     setClassFilter(new Set()); setCommunityFilter(new Set());
     setCityFilter(""); setBoardingFilter(new Set());
+  }
+
+  async function saveNewStudent() {
+    if (!newStudent.firstName?.trim() && !newStudent.lastName?.trim()) {
+      setAddError("נדרש לפחות שם פרטי או שם משפחה");
+      return;
+    }
+    setAddSaving(true);
+    setAddError("");
+    try {
+      const fullName = `${newStudent.lastName || ""} ${newStudent.firstName || ""}`.trim();
+      await createStudent({ ...newStudent, fullName } as Omit<Student, "id">);
+      setShowAddModal(false);
+      setNewStudent({});
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : "שגיאה בשמירה");
+    } finally {
+      setAddSaving(false);
+    }
   }
 
   function exportToExcel() {
@@ -376,6 +401,9 @@ export default function DatabasePage() {
               <button className="db-export-btn" onClick={() => setShowExportModal(true)}>
                 <Download size={15} /> ייצוא
               </button>
+              <button className="db-add-btn" onClick={() => { setNewStudent({}); setAddError(""); setShowAddModal(true); }}>
+                <UserPlus size={15} /> הוסף תלמיד
+              </button>
             </div>
           </div>
         )}
@@ -415,7 +443,96 @@ export default function DatabasePage() {
           </div>
         )}
 
-        {/* ── States ── */}
+        {/* ── Add student modal ── */}
+        {showAddModal && (
+          <div className="export-modal-overlay" onClick={() => setShowAddModal(false)}>
+            <div className="export-modal db-add-modal" onClick={(e) => e.stopPropagation()}>
+              <h3 className="export-modal-title">הוספת תלמיד חדש</h3>
+
+              {addError && <div className="edit-feedback error" style={{ marginBottom: 12 }}>{addError}</div>}
+
+              <div className="db-add-fields">
+                {/* שם */}
+                <div className="db-add-section-title">פרטים אישיים</div>
+                {[
+                  { key: "lastName",      label: "שם משפחה" },
+                  { key: "firstName",     label: "שם פרטי" },
+                  { key: "passportOrId",  label: 'ת"ז / דרכון' },
+                  { key: "age",           label: "גיל" },
+                  { key: "hebrewDate",    label: "תאריך לידה עברי" },
+                  { key: "gregorianDate", label: "תאריך לידה לועזי" },
+                ].map((f) => (
+                  <div key={f.key} className="db-add-field">
+                    <label className="edit-label">{f.label}</label>
+                    <input className="edit-input"
+                      value={(newStudent as Record<string,string>)[f.key] ?? ""}
+                      onChange={(e) => setNewStudent((p) => ({ ...p, [f.key]: e.target.value }))}
+                      placeholder={f.label} />
+                  </div>
+                ))}
+
+                <div className="db-add-section-title">שיעור וקהילה</div>
+                {[
+                  { key: "className",  label: "שיעור" },
+                  { key: "community",  label: "קהילה" },
+                  { key: "fatherName", label: "שם האב" },
+                  { key: "motherName", label: "שם האם" },
+                ].map((f) => (
+                  <div key={f.key} className="db-add-field">
+                    <label className="edit-label">{f.label}</label>
+                    <input className="edit-input"
+                      value={(newStudent as Record<string,string>)[f.key] ?? ""}
+                      onChange={(e) => setNewStudent((p) => ({ ...p, [f.key]: e.target.value }))}
+                      placeholder={f.label} />
+                  </div>
+                ))}
+
+                <div className="db-add-section-title">טלפונים וכתובת</div>
+                {[
+                  { key: "homePhone",   label: "טלפון בית" },
+                  { key: "fatherPhone", label: "טלפון אב" },
+                  { key: "motherPhone", label: "טלפון אם" },
+                  { key: "city",        label: "עיר" },
+                  { key: "street",      label: "רחוב" },
+                  { key: "email",       label: "מייל" },
+                ].map((f) => (
+                  <div key={f.key} className="db-add-field">
+                    <label className="edit-label">{f.label}</label>
+                    <input className="edit-input"
+                      value={(newStudent as Record<string,string>)[f.key] ?? ""}
+                      onChange={(e) => setNewStudent((p) => ({ ...p, [f.key]: e.target.value }))}
+                      placeholder={f.label} />
+                  </div>
+                ))}
+
+                <div className="db-add-section-title">שכר לימוד</div>
+                {[
+                  { key: "tuition",            label: "שכר לימוד" },
+                  { key: "tuitionRank",         label: "דרגה" },
+                  { key: "paymentMethod",       label: "אמצעי תשלום" },
+                  { key: "paymentStatusNotes",  label: "הערות" },
+                  { key: "boarding",            label: "פנימייה" },
+                ].map((f) => (
+                  <div key={f.key} className="db-add-field">
+                    <label className="edit-label">{f.label}</label>
+                    <input className="edit-input"
+                      value={(newStudent as Record<string,string>)[f.key] ?? ""}
+                      onChange={(e) => setNewStudent((p) => ({ ...p, [f.key]: e.target.value }))}
+                      placeholder={f.label} />
+                  </div>
+                ))}
+              </div>
+
+              <div className="export-modal-footer" style={{ marginTop: 20 }}>
+                <button className="db-add-btn" onClick={saveNewStudent} disabled={addSaving}>
+                  {addSaving ? <Loader2 size={15} className="spin" /> : <Check size={15} />}
+                  {addSaving ? "שומר..." : "שמור תלמיד"}
+                </button>
+                <button className="export-modal-cancel" onClick={() => setShowAddModal(false)}>בטל</button>
+              </div>
+            </div>
+          </div>
+        )}
         {loading && <p className="search-state">טוען נתונים...</p>}
         {error   && <p className="search-error">{error}</p>}
 
