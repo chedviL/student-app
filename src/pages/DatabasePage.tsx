@@ -43,6 +43,20 @@ const COLUMNS: ColDef[] = [
 
 // ─── Filter components (same pattern as SortedListsPage) ─────────────────────
 
+// ─── Format gregorian date DD.MM.YYYY ────────────────────────────────────────
+function fmtDate(val: string | undefined): string {
+  if (!val) return "";
+  // already has dots → return as-is
+  if (val.includes(".")) return val;
+  // YYYY-MM-DD → DD.MM.YYYY
+  const m = val.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return `${m[3]}.${m[2]}.${m[1]}`;
+  // MM/DD/YYYY → DD.MM.YYYY
+  const m2 = val.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m2) return `${m2[2].padStart(2,"0")}.${m2[1].padStart(2,"0")}.${m2[3]}`;
+  return val;
+}
+
 function FilterInput({
   label, options, value, onChange,
 }: {
@@ -177,7 +191,7 @@ function EditableCell({
   if (!col.editable) {
     return (
       <span dir={col.dir} style={col.dir === "ltr" ? { unicodeBidi: "isolate" } : undefined}>
-        {original || "—"}
+        {col.key === "gregorianDate" ? fmtDate(original) : (original || "—")}
       </span>
     );
   }
@@ -217,7 +231,9 @@ function EditableCell({
       title="לחץ לעריכה"
       dir={col.dir}
     >
-      {original || <span className="db-cell-empty">—</span>}
+      {col.key === "gregorianDate"
+        ? (fmtDate(original) || <span className="db-cell-empty">—</span>)
+        : (original || <span className="db-cell-empty">—</span>)}
       <Pencil size={11} className="db-cell-edit-icon" />
     </span>
   );

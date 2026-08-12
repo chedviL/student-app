@@ -545,3 +545,106 @@
   flex-direction: column;
   gap: 4px;
 }
+
+/* ── Filter components (thead) ── */
+
+.filter-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.filter-btn {
+  background: transparent;
+  border: none;
+  color: #fff4dc;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.filter-btn:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+.filter-btn-active {
+  color: #ffd97a;
+  text-decoration: underline;
+}
+
+.filter-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 300;
+  background: #fffdf8;
+  border: 1px solid #d9b980;
+  border-radius: 12px;
+  padding: 8px 0;
+  min-width: 160px;
+  max-height: 260px;
+  overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(92,53,23,0.15);
+  direction: rtl;
+}
+
+.filter-clear {
+  display: block;
+  width: 100%;
+  padding: 6px 14px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #eddcc0;
+  color: #c58a46;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: right;
+  font-family: inherit;
+}
+
+.filter-clear:hover { background: #fdf3e3; }
+
+.filter-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  font-size: 14px;
+  color: #4c2b16;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.filter-option input[type="checkbox"] {
+  accent-color: var(--gold);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+.filter-option-selected {
+  background: #fdf3e3;
+  font-weight: 700;
+}
+
+.filter-search-input {
+  width: calc(100% - 16px);
+  margin: 6px 8px;
+  padding: 6px 10px;
+  border: 1px solid #d9b980;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #4c2b16;
+  outline: none;
+  background: #fffdf8;
+  display: block;
+  font-family: inherit;
+}
+
+.filter-search-input:focus {
+  border-color: #c58a46;
+}

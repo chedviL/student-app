@@ -6,6 +6,16 @@ import { useStudents } from "../context/StudentsContext";
 import { updateStudent } from "../api/studentsApi";
 import type { Student } from "../types/student";
 
+function fmtDate(val: string | undefined): string {
+  if (!val) return "";
+  if (val.includes(".")) return val;
+  const m = val.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return `${m[3]}.${m[2]}.${m[1]}`;
+  const m2 = val.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m2) return `${m2[2].padStart(2,"0")}.${m2[1].padStart(2,"0")}.${m2[3]}`;
+  return val;
+}
+
 // ─── animation variants ───────────────────────────────────────────────────────
 
 const containerVariants = {
@@ -321,7 +331,7 @@ export default function StudentCardPage() {
               ) : (
                 <span className="profile-value" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                   {student.hebrewDate && <span>{student.hebrewDate}</span>}
-                  {student.gregorianDate && <span style={{ direction: "ltr", unicodeBidi: "isolate", fontSize: 14 }}>{student.gregorianDate}</span>}
+                  {student.gregorianDate && <span style={{ direction: "ltr", unicodeBidi: "isolate", fontSize: 14 }}>{fmtDate(student.gregorianDate)}</span>}
                   {!student.hebrewDate && !student.gregorianDate && "-"}
                 </span>
               )}
