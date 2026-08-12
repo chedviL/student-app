@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { Search, Database, Home, Pencil } from "lucide-react";
+import { Search, Database, Home, Pencil, GraduationCap, CreditCard } from "lucide-react";
 import logo from "../../assets/logo.png";
 import "./Navbar.css";
 
 const NAV_ITEMS = [
-  { to: "/",         label: "בית",         icon: <Home     size={16} />, end: true  },
-  { to: "/search",   label: "חיפוש",       icon: <Search   size={16} />, end: false },
-  { to: "/database", label: "מסד נתונים",  icon: <Database size={16} />, end: false },
-  { to: "/edit",     label: "עריכה",       icon: <Pencil   size={16} />, end: false },
+  { to: "/",         label: "בית",         icon: <Home          size={16} />, end: true  },
+  { to: "/search",   label: "חיפוש",       icon: <Search        size={16} />, end: false },
+  { to: "/database", label: "מסד נתונים",  icon: <Database      size={16} />, end: false },
+  { to: "/edit",     label: "עריכה",       icon: <Pencil        size={16} />, end: false },
+  { to: "/alumni",   label: "בוגרים",      icon: <GraduationCap size={16} />, end: false },
+  { to: "/payments", label: "תשלומים",     icon: <CreditCard    size={16} />, end: false },
 ];
 
 export default function Navbar() {

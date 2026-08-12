@@ -35,6 +35,10 @@ function mapRow(row: Record<string, unknown>): Student {
     fax: s(row.fax),
     tuition: s(row.tuition),
     tuitionRank: s(row.tuition_rank),
+    tuitionCurrency: row.tuition_currency ? String(row.tuition_currency) : null,
+    // tuition_start_date is type date in DB — Supabase returns YYYY-MM-DD string or null
+    tuitionStartDate: row.tuition_start_date ? String(row.tuition_start_date) : null,
+    siblings: s(row.siblings),
     dueDateNote: s(row.due_date_note),
     paymentMethod: s(row.payment_method),
     paymentStatusNotes: s(row.payment_status_notes),
@@ -76,6 +80,9 @@ function mapToRow(student: Partial<Student>): Record<string, unknown> {
     fax: student.fax,
     tuition: student.tuition,
     tuition_rank: student.tuitionRank,
+    tuition_currency: student.tuitionCurrency,
+    // send YYYY-MM-DD string or null — Postgres date column accepts ISO strings
+    tuition_start_date: student.tuitionStartDate ?? null,
     due_date_note: student.dueDateNote,
     payment_method: student.paymentMethod,
     payment_status_notes: student.paymentStatusNotes,

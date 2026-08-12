@@ -130,6 +130,19 @@
   box-shadow: 0 0 6px rgba(255, 210, 80, 0.6);
 }
 
+/* ---- Logout button ---- */
+
+.navbar-logout {
+  color: rgba(255, 240, 200, 0.38) !important;
+  font-size: 13px !important;
+  padding: 7px 10px !important;
+}
+
+.navbar-logout:hover {
+  color: rgba(255, 240, 200, 0.7) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
 /* ---- Divider ---- */
 
 .navbar-divider-li {
@@ -207,8 +220,6 @@
   flex-direction: column;
   gap: 4px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
-
-  /* slide animation */
   transform-origin: top;
   animation: drawerOpen 0.22s ease forwards;
 }

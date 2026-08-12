@@ -7,28 +7,27 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
-import type { Student } from "../types/student";
-import { getStudents } from "../api/studentsApi";
+import type { Alumni } from "../types/student";
+import { getAlumni } from "../api/alumniApi";
 import { supabase } from "../lib/supabaseClient";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface StudentsState {
-  students: Student[];
+interface AlumniState {
+  alumni: Alumni[];
   loading: boolean;
   error: string;
   lastUpdated: Date | null;
   refresh: () => Promise<void>;
-  updateLocal: (updated: Student) => void;
-  removeLocal: (id: string) => void;
-  addLocal: (student: Student) => void;
+  updateLocal: (updated: Alumni) => void;
+  addLocal: (alumnus: Alumni) => void;
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 
-const StudentsContext = createContext<StudentsState | null>(null);
+const AlumniContext = createContext<AlumniState | null>(null);
 
-// ─── Helper: map a raw Supabase realtime row → Student ───────────────────────
+// ─── Helper: map a raw Supabase realtime row → Alumni ────────────────────────
 
 // מחרוזת בטוחה — שומר אפסים מובילים (חשוב למספרי טלפון)
 function s(val: unknown): string {
@@ -36,7 +35,7 @@ function s(val: unknown): string {
   return String(val);
 }
 
-function mapRow(row: Record<string, unknown>): Student {
+function mapRow(row: Record<string, unknown>): Alumni {
   return {
     id: s(row.id),
     firstName: s(row.first_name),
@@ -62,10 +61,9 @@ function mapRow(row: Record<string, unknown>): Student {
     fax: s(row.fax),
     tuition: s(row.tuition),
     tuitionRank: s(row.tuition_rank),
-    tuitionCurrency: row.tuition_currency ? String(row.tuition_currency) : null,
-    // tuition_start_date is type date in DB — Supabase returns YYYY-MM-DD string or null
-    tuitionStartDate: row.tuition_start_date ? String(row.tuition_start_date) : null,
+    tuitionCurrency: row.tuition_currency != null ? String(row.tuition_currency) : null,
     siblings: s(row.siblings),
+    tuitionStartDate: row.tuition_start_date != null ? String(row.tuition_start_date) : null,
     dueDateNote: s(row.due_date_note),
     paymentMethod: s(row.payment_method),
     paymentStatusNotes: s(row.payment_status_notes),
@@ -78,13 +76,16 @@ function mapRow(row: Record<string, unknown>): Student {
     educationType: s(row.education_type),
     religion: s(row.religion),
     religionStudies: s(row.religion_studies),
+    alumniPhone: s(row.alumni_phone),
+    // שדה ייחודי לבוגרים
+    graduatedAt: s(row.graduated_at),
   };
 }
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
-export function StudentsProvider({ children }: { children: ReactNode }) {
-  const [students, setStudents] = useState<Student[]>([]);
+export function AlumniProvider({ children }: { children: ReactNode }) {
+  const [alumni, setAlumni] = useState<Alumni[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -96,8 +97,8 @@ export function StudentsProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       setError("");
-      const data = await getStudents();
-      setStudents(data);
+      const data = await getAlumni();
+      setAlumni(data);
       setLastUpdated(new Date());
     } catch (err) {
       setError(err instanceof Error ? err.message : "שגיאה בטעינת נתונים");
@@ -106,24 +107,18 @@ export function StudentsProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // עדכון מיידי של תלמיד אחד ב-state (ללא המתנה ל-Realtime)
-  const updateLocal = useCallback((updated: Student) => {
-    setStudents((prev) =>
-      prev.map((s) => (s.id === updated.id ? updated : s))
+  // עדכון מיידי של בוגר אחד ב-state (ללא המתנה ל-Realtime)
+  const updateLocal = useCallback((updated: Alumni) => {
+    setAlumni((prev) =>
+      prev.map((a) => (a.id === updated.id ? updated : a))
     );
     setLastUpdated(new Date());
   }, []);
 
-  // הסרה מיידית של תלמיד מה-state (לאחר פעולת "יצא")
-  const removeLocal = useCallback((id: string) => {
-    setStudents((prev) => prev.filter((s) => s.id !== id));
-    setLastUpdated(new Date());
-  }, []);
-
-  // הוספה מיידית של תלמיד חדש ל-state
-  const addLocal = useCallback((student: Student) => {
-    setStudents((prev) => {
-      const next = [...prev, student];
+  // הוספה מיידית של בוגר חדש ל-state
+  const addLocal = useCallback((alumnus: Alumni) => {
+    setAlumni((prev) => {
+      const next = [...prev, alumnus];
       return next.sort((a, b) => (a.lastName || "").localeCompare(b.lastName || "", "he"));
     });
     setLastUpdated(new Date());
@@ -139,16 +134,16 @@ export function StudentsProvider({ children }: { children: ReactNode }) {
   // ── Supabase Realtime subscription ─────────────────────────────────────────
   useEffect(() => {
     const channel = supabase
-      .channel("students-realtime")
+      .channel("alumni-realtime")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "students" },
+        { event: "*", schema: "public", table: "alumni" },
         (payload) => {
           const { eventType, new: newRow, old: oldRow } = payload;
 
           if (eventType === "INSERT") {
             const inserted = mapRow(newRow as Record<string, unknown>);
-            setStudents((prev) => {
+            setAlumni((prev) => {
               // insert in correct alphabetical position
               const next = [...prev, inserted];
               return next.sort((a, b) =>
@@ -160,15 +155,15 @@ export function StudentsProvider({ children }: { children: ReactNode }) {
 
           if (eventType === "UPDATE") {
             const updated = mapRow(newRow as Record<string, unknown>);
-            setStudents((prev) =>
-              prev.map((s) => (s.id === updated.id ? updated : s))
+            setAlumni((prev) =>
+              prev.map((a) => (a.id === updated.id ? updated : a))
             );
             setLastUpdated(new Date());
           }
 
           if (eventType === "DELETE") {
             const deletedId = (oldRow as Record<string, unknown>).id as string;
-            setStudents((prev) => prev.filter((s) => s.id !== deletedId));
+            setAlumni((prev) => prev.filter((a) => a.id !== deletedId));
             setLastUpdated(new Date());
           }
         }
@@ -181,20 +176,20 @@ export function StudentsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <StudentsContext.Provider
-      value={{ students, loading, error, lastUpdated, refresh, updateLocal, removeLocal, addLocal }}
+    <AlumniContext.Provider
+      value={{ alumni, loading, error, lastUpdated, refresh, updateLocal, addLocal }}
     >
       {children}
-    </StudentsContext.Provider>
+    </AlumniContext.Provider>
   );
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
-export function useStudents(): StudentsState {
-  const ctx = useContext(StudentsContext);
+export function useAlumni(): AlumniState {
+  const ctx = useContext(AlumniContext);
   if (!ctx) {
-    throw new Error("useStudents must be used inside <StudentsProvider>");
+    throw new Error("useAlumni must be used inside <AlumniProvider>");
   }
   return ctx;
 }

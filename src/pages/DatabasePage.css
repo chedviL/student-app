@@ -648,3 +648,14 @@
 .filter-search-input:focus {
   border-color: #c58a46;
 }
+
+/* ── Graduate button ── */
+.db-graduate-btn {
+  width: 28px; height: 28px; border-radius: 8px;
+  border: 1px solid rgba(124,111,205,0.4);
+  background: linear-gradient(180deg, #3d3460 0%, #5a4da0 100%);
+  color: #e0deff; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.db-graduate-btn:hover { transform: scale(1.1); box-shadow: 0 4px 10px rgba(124,111,205,0.35); }

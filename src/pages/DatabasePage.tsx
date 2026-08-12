@@ -1,10 +1,12 @@
 import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Users, BookOpen, MapPin, Check, X, Loader2, Pencil, Download, UserPlus } from "lucide-react";
+import { Users, BookOpen, MapPin, Check, X, Loader2, Pencil, Download, UserPlus, GraduationCap } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useStudents } from "../context/StudentsContext";
+import { useAlumni } from "../context/AlumniContext";
 import { updateStudent, createStudent } from "../api/studentsApi";
+import { graduateStudent } from "../api/alumniApi";
 import type { Student } from "../types/student";
 import "./DatabasePage.css";
 
@@ -253,7 +255,8 @@ function EditableCell({
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function DatabasePage() {
-  const { students: raw, loading, error } = useStudents();
+  const { students: raw, loading, error, removeLocal, addLocal } = useStudents();
+  const { addLocal: addAlumniLocal } = useAlumni();
   const navigate = useNavigate();
 
   const [query, setQuery] = useState("");
@@ -272,6 +275,10 @@ export default function DatabasePage() {
   const [newStudent, setNewStudent] = useState<Partial<Student>>({});
   const [addSaving, setAddSaving] = useState(false);
   const [addError, setAddError] = useState("");
+  const [graduateTarget, setGraduateTarget] = useState<Student | null>(null);
+  const [graduating, setGraduating] = useState(false);
+  const [graduateError, setGraduateError] = useState("");
+  const [graduateSuccess, setGraduateSuccess] = useState("");
 
   // local copy so inline edits reflect immediately without full re-fetch
   const [localStudents, setLocalStudents] = useState<Student[]>([]);
@@ -347,13 +354,32 @@ export default function DatabasePage() {
     setAddError("");
     try {
       const fullName = `${newStudent.lastName || ""} ${newStudent.firstName || ""}`.trim();
-      await createStudent({ ...newStudent, fullName } as Omit<Student, "id">);
+      const created = await createStudent({ ...newStudent, fullName } as Omit<Student, "id">);
+      addLocal(created);
       setShowAddModal(false);
       setNewStudent({});
     } catch (err) {
       setAddError(err instanceof Error ? err.message : "שגיאה בשמירה");
     } finally {
       setAddSaving(false);
+    }
+  }
+
+  async function handleGraduate(student: Student) {
+    setGraduating(true);
+    setGraduateError("");
+    try {
+      const alumnus = await graduateStudent(student.id);
+      removeLocal(student.id);
+      addAlumniLocal(alumnus);
+      setGraduateTarget(null);
+      setGraduateSuccess(`${student.lastName} ${student.firstName} הועבר לרשימת הבוגרים`);
+      setTimeout(() => setGraduateSuccess(""), 3000);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "שגיאה בהעברה";
+      setGraduateError(msg.includes("כפילות") || msg.includes("unique") ? "בוגר עם ת״ז זו כבר קיים" : msg);
+    } finally {
+      setGraduating(false);
     }
   }
 
@@ -562,6 +588,36 @@ export default function DatabasePage() {
         )}
         {loading && <p className="search-state">טוען נתונים...</p>}
         {error   && <p className="search-error">{error}</p>}
+        {graduateSuccess && (
+          <div style={{ textAlign: "center", padding: "10px 16px", background: "rgba(45,90,45,0.1)", border: "1px solid rgba(46,125,50,0.3)", borderRadius: 10, marginBottom: 12, color: "#1b5e20", fontWeight: 700, fontSize: 14 }}>
+            ✔ {graduateSuccess}
+          </div>
+        )}
+
+        {/* ── Graduate confirm modal ── */}
+        {graduateTarget && (
+          <div className="export-modal-overlay" onClick={() => !graduating && setGraduateTarget(null)}>
+            <div className="export-modal" style={{ maxWidth: 400, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+              <h3 className="export-modal-title">העברה לבוגרים</h3>
+              <p style={{ color: "#5b331a", marginBottom: 16, fontSize: 15 }}>
+                האם להעביר את <strong>{graduateTarget.lastName} {graduateTarget.firstName}</strong> לרשימת הבוגרים?
+              </p>
+              {graduateError && <p style={{ color: "#c00", marginBottom: 12, fontSize: 14 }}>{graduateError}</p>}
+              <div className="export-modal-footer">
+                <button
+                  className="db-add-btn"
+                  onClick={() => handleGraduate(graduateTarget)}
+                  disabled={graduating}
+                  style={{ background: "linear-gradient(180deg, #3d3460, #5a4da0)", color: "#e0deff", border: "1px solid rgba(124,111,205,0.4)" }}
+                >
+                  {graduating ? <Loader2 size={15} className="spin" /> : <GraduationCap size={15} />}
+                  {graduating ? "מעביר..." : "אשר יציאה"}
+                </button>
+                <button className="export-modal-cancel" onClick={() => { setGraduateTarget(null); setGraduateError(""); }}>בטל</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── Table ── */}
         {!loading && !error && (
@@ -593,6 +649,7 @@ export default function DatabasePage() {
                         )}
                       </th>
                     ))}
+                    <th className="db-th-link">יצא</th>
                     <th className="db-th-link">כרטיס</th>
                   </tr>
                 </thead>
@@ -614,6 +671,15 @@ export default function DatabasePage() {
                             />
                           </td>
                         ))}
+                        <td className="db-td-link">
+                          <button
+                            className="db-graduate-btn"
+                            onClick={() => { setGraduateError(""); setGraduateTarget(student); }}
+                            title="העבר לבוגרים"
+                          >
+                            <GraduationCap size={14} />
+                          </button>
+                        </td>
                         <td className="db-td-link">
                           <button
                             className="db-card-btn"

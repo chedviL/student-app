@@ -4,27 +4,84 @@
   <meta charset="UTF-8" />
   <title>ייבוא תלמידים ל-Supabase</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 40px; max-width: 700px; margin: auto; background: #f5f5f5; }
+    body { font-family: Arial, sans-serif; padding: 40px; max-width: 900px; margin: auto; background: #f5f5f5; }
     h1 { color: #333; }
     .box { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
     button { background: #4f46e5; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 16px; cursor: pointer; margin-top: 12px; }
     button:disabled { background: #999; cursor: not-allowed; }
+    button.secondary { background: #0891b2; }
+    button.danger { background: #dc2626; }
+    .mode-tabs { display: flex; gap: 12px; margin-bottom: 20px; }
+    .mode-tab { padding: 10px 20px; border-radius: 8px; border: 2px solid #4f46e5; background: white; color: #4f46e5; font-size: 15px; cursor: pointer; font-weight: bold; }
+    .mode-tab.active { background: #4f46e5; color: white; }
+    .mode-section { display: none; }
+    .mode-section.active { display: block; }
     #log { background: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 13px; height: 300px; overflow-y: auto; white-space: pre-wrap; direction: ltr; }
     .success { color: #4ade80; }
     .error { color: #f87171; }
     .info { color: #60a5fa; }
+    .warn { color: #fbbf24; }
+    #previewTable { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+    #previewTable th { background: #4f46e5; color: white; padding: 8px; text-align: right; }
+    #previewTable td { padding: 7px 8px; border-bottom: 1px solid #e5e7eb; }
+    #previewTable tr:nth-child(even) td { background: #f9fafb; }
+    .status-READY { color: #16a34a; font-weight: bold; }
+    .status-READY_OVERWRITE { color: #d97706; font-weight: bold; }
+    .status-STUDENT_NOT_FOUND { color: #dc2626; font-weight: bold; }
+    .status-INVALID_DATE { color: #dc2626; font-weight: bold; }
+    .status-EMPTY_DATE { color: #9ca3af; font-weight: bold; }
+    .status-DUPLICATE_MATCH { color: #7c3aed; font-weight: bold; }
   </style>
 </head>
 <body>
   <h1>ייבוא תלמידים ל-Supabase</h1>
-  <div class="box">
-    <p>בחרי את קובץ ה-XLSX המקורי:</p>
-    <input type="file" id="fileInput" accept=".xlsx,.xls" />
-    <br />
-    <button id="importBtn">התחל ייבוא</button>
+
+  <div class="mode-tabs">
+    <button class="mode-tab active" onclick="switchMode('import')">ייבוא תלמידים</button>
+    <button class="mode-tab" onclick="switchMode('tuition')">עדכון תאריכי שכ"ל</button>
   </div>
-  <div class="box">
-    <div id="log">ממתין...</div>
+
+  <!-- מצב 1: ייבוא רגיל -->
+  <div id="mode-import" class="mode-section active">
+    <div class="box">
+      <p>בחרי את קובץ ה-XLSX המקורי:</p>
+      <input type="file" id="fileInput" accept=".xlsx,.xls" />
+      <br />
+      <button id="importBtn">התחל ייבוא</button>
+    </div>
+    <div class="box">
+      <div id="log">ממתין...</div>
+    </div>
+  </div>
+
+  <!-- מצב 2: עדכון תאריכי שכ"ל -->
+  <div id="mode-tuition" class="mode-section">
+    <div class="box">
+      <p>בחרי קובץ XLSX לעדכון תאריכי שכ"ל בלבד:</p>
+      <input type="file" id="tuitionFileInput" accept=".xlsx,.xls" />
+      <br />
+      <label style="display:inline-flex;align-items:center;gap:8px;margin-top:14px;font-size:14px;">
+        <input type="checkbox" id="allowOverwrite" />
+        אפשר דריסת תאריך קיים (READY_OVERWRITE)
+      </label>
+      <br />
+      <button id="previewBtn" class="secondary" style="margin-left:10px;">הצג Preview</button>
+      <button id="applyBtn" class="danger" disabled>בצע עדכון</button>
+    </div>
+    <div class="box" id="summaryBox" style="display:none;">
+      <div id="summaryText"></div>
+    </div>
+    <div class="box" id="previewBox" style="display:none;">
+      <table id="previewTable">
+        <thead><tr>
+          <th>ת.ז./דרכון</th><th>שם</th><th>ערך מקורי בExcel</th><th>תאריך מפוענח</th><th>ערך קיים ב-DB</th><th>סטטוס</th>
+        </tr></thead>
+        <tbody id="previewBody"></tbody>
+      </table>
+    </div>
+    <div class="box">
+      <div id="tuitionLog">ממתין...</div>
+    </div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -46,6 +103,7 @@
       'payment_status_notes': 1, 'finish_241023': 1, 'end_of_year': 1,
       'credit': 1, 'bank_transfer': 1, 'fax': 1, 'contact_phone': 1,
       'contact_address': 1, 'boarding': 1, 'due_date_note': 1,
+      'tuition_start_date': 1,  // נוסף — תאריך תחילת גביית שכ"ל
       'religion': 1, 'education': 1
     };
 
@@ -73,7 +131,8 @@
       'שכ"ל': 'tuition',
       'דירוג שכ"ל': 'tuition_rank',
       'אחים': 'siblings',
-      'תאריך תחילת גביית שכ"ל': 'due_date_note',
+      // תאריך תחילת גביית שכ"ל הולך ל-tuition_start_date (לא ל-due_date_note)
+      'תאריך תחילת גביית שכ"ל': 'tuition_start_date',
       'באמצעות': 'payment_method',
       'סטטוס התשלום, הערות,': 'payment_status_notes',
       'סטטוס התשלום, הערות': 'payment_status_notes',
@@ -86,20 +145,29 @@
       'פקס': 'fax',
       'איש קשר טלפון': 'contact_phone',
       'איש קשר כתובת': 'contact_address',
-      'אשראי': 'credit',
-      'בנקאי': 'bank_transfer',
-      'פקס': 'fax',
-      'איש קשר טלפון': 'contact_phone',
-      'איש קשר כתובת': 'contact_address',
       'לונ': 'boarding',
       'דתות': 'religion',
       'חינוך': 'education',
-      'תאריך תחילת גביית שכ"ל': 'due_date_note',
+      // עמודה ספציפית שהופיעה בגרסה מסוימת של ה-Excel — נשמרת כהערה ב-due_date_note
       'נמ בתאריך 10/03/26': 'due_date_note',
-      'פקטיבי': 'end_of_year',
       '$/₪ ': 'tuition_currency',
       '$/₪': 'tuition_currency',
     };
+
+    function normalizeCurrency(val) {
+      var v = String(val).trim();
+      if (v === 'ש"ח' || v === '₪' || v === 'ILS') return 'ILS';
+      if (v === '$'   || v === 'USD')              return 'USD';
+      return v; // ערך לא מוכר — נשמר כמות שהוא
+    }
+
+    function switchMode(mode) {
+      document.getElementById('mode-import').classList.toggle('active', mode === 'import');
+      document.getElementById('mode-tuition').classList.toggle('active', mode === 'tuition');
+      document.querySelectorAll('.mode-tab').forEach(function(t, i) {
+        t.classList.toggle('active', (i === 0 && mode === 'import') || (i === 1 && mode === 'tuition'));
+      });
+    }
 
     function addLog(msg, type) {
       var el = document.getElementById('log');
@@ -108,6 +176,244 @@
       line.textContent = msg;
       el.appendChild(line);
       el.scrollTop = el.scrollHeight;
+    }
+
+    function addTuitionLog(msg, type) {
+      var el = document.getElementById('tuitionLog');
+      var line = document.createElement('div');
+      if (type) line.className = type;
+      line.textContent = msg;
+      el.appendChild(line);
+      el.scrollTop = el.scrollHeight;
+    }
+
+    // --- parseTuitionDate ---
+    // מחזירה מחרוזת YYYY-MM-DD או null
+    function parseTuitionDate(val) {
+      if (val === null || val === undefined) return null;
+      var s = String(val).trim();
+      if (!s || s === '' || s === 'undefined') return null;
+
+      // Excel serial (מספר שלם בין 30000 ל-60000)
+      var num = Number(s);
+      if (!isNaN(num) && num > 30000 && num < 60000 && s.indexOf('/') === -1 && s.indexOf('-') === -1 && s.indexOf('.') === -1) {
+        // Excel epoch: 1 Jan 1900 = serial 1 (עם באג leap year של Excel)
+        var excelEpoch = new Date(1899, 11, 30);
+        var d = new Date(excelEpoch.getTime() + num * 86400000);
+        if (isNaN(d.getTime())) return null;
+        return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+      }
+
+      // DD/MM/YYYY או DD/MM/YY
+      var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+      if (m) {
+        var day = parseInt(m[1], 10), mon = parseInt(m[2], 10), yr = parseInt(m[3], 10);
+        if (yr < 100) yr += (yr < 50 ? 2000 : 1900);
+        if (mon < 1 || mon > 12 || day < 1 || day > 31) return null;
+        return yr + '-' + pad2(mon) + '-' + pad2(day);
+      }
+
+      // DD.MM.YYYY
+      m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);
+      if (m) {
+        var day = parseInt(m[1], 10), mon = parseInt(m[2], 10), yr = parseInt(m[3], 10);
+        if (yr < 100) yr += (yr < 50 ? 2000 : 1900);
+        if (mon < 1 || mon > 12 || day < 1 || day > 31) return null;
+        return yr + '-' + pad2(mon) + '-' + pad2(day);
+      }
+
+      // YYYY-MM-DD
+      m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) {
+        var yr = parseInt(m[1], 10), mon = parseInt(m[2], 10), day = parseInt(m[3], 10);
+        if (mon < 1 || mon > 12 || day < 1 || day > 31) return null;
+        return yr + '-' + pad2(mon) + '-' + pad2(day);
+      }
+
+      // JS Date object (כשraw:true)
+      if (val instanceof Date && !isNaN(val.getTime())) {
+        return val.getFullYear() + '-' + pad2(val.getMonth() + 1) + '-' + pad2(val.getDate());
+      }
+
+      return null;
+    }
+
+    function pad2(n) { return n < 10 ? '0' + n : String(n); }
+
+    // --- מצב עדכון תאריכי שכ"ל ---
+    var previewRows = []; // שמירת תוצאות ה-preview לשימוש ב-apply
+
+    document.getElementById('previewBtn').addEventListener('click', function() {
+      var file = document.getElementById('tuitionFileInput').files[0];
+      if (!file) { alert('בחרי קובץ תחילה!'); return; }
+
+      document.getElementById('tuitionLog').innerHTML = '';
+      document.getElementById('previewBox').style.display = 'none';
+      document.getElementById('summaryBox').style.display = 'none';
+      document.getElementById('applyBtn').disabled = true;
+      previewRows = [];
+
+      addTuitionLog('קורא קובץ: ' + file.name, 'info');
+
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          var data = new Uint8Array(e.target.result);
+          var workbook = XLSX.read(data, { type: 'array' });
+          var sheet = workbook.Sheets[workbook.SheetNames[0]];
+          var rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+          addTuitionLog('שורות: ' + rows.length, 'info');
+
+          // מצא עמודות passport_or_id ו-tuition_start_date
+          var idCol = null, dateCol = null, nameCol = null;
+          if (rows.length > 0) {
+            var keys = Object.keys(rows[0]);
+            for (var k = 0; k < keys.length; k++) {
+              var hk = keys[k].trim();
+              var mapped = COLUMN_MAP[hk] || (VALID_DB_COLUMNS[hk] ? hk : null);
+              if (mapped === 'passport_or_id') idCol = keys[k];
+              if (mapped === 'tuition_start_date') dateCol = keys[k];
+              if (mapped === 'last_name' || mapped === 'first_name') nameCol = nameCol || keys[k];
+            }
+          }
+
+          if (!idCol) { addTuitionLog('שגיאה: לא נמצאה עמודת ת.ז./דרכון בקובץ', 'error'); return; }
+          if (!dateCol) { addTuitionLog('שגיאה: לא נמצאה עמודת תאריך תחילת גביית שכ"ל בקובץ', 'error'); return; }
+
+          addTuitionLog('עמודת מזהה: ' + idCol + ' | עמודת תאריך: ' + dateCol, 'info');
+
+          // בנה מפה של passport_or_id → {rawDate, parsedDate} מה-Excel
+          // בדוק כפילויות
+          var excelMap = {};
+          var duplicates = {};
+          for (var i = 0; i < rows.length; i++) {
+            var pid = String(rows[i][idCol] || '').trim();
+            if (!pid) continue;
+            if (excelMap[pid]) { duplicates[pid] = true; }
+            else { excelMap[pid] = { raw: rows[i][dateCol], name: nameCol ? rows[i][nameCol] : '' }; }
+          }
+
+          // שלוף תלמידים מ-Supabase
+          addTuitionLog('שולף תלמידים מ-Supabase...', 'info');
+          db.from('students')
+            .select('passport_or_id, full_name, tuition_start_date')
+            .then(function(result) {
+              if (result.error) { addTuitionLog('שגיאת Supabase: ' + result.error.message, 'error'); return; }
+
+              var dbMap = {};
+              (result.data || []).forEach(function(s) {
+                if (s.passport_or_id) dbMap[String(s.passport_or_id).trim()] = s;
+              });
+
+              addTuitionLog('תלמידים ב-DB: ' + Object.keys(dbMap).length, 'info');
+
+              // בנה שורות preview
+              var counts = { READY: 0, READY_OVERWRITE: 0, STUDENT_NOT_FOUND: 0, INVALID_DATE: 0, EMPTY_DATE: 0, DUPLICATE_MATCH: 0 };
+              var tbody = document.getElementById('previewBody');
+              tbody.innerHTML = '';
+              previewRows = [];
+
+              var pids = Object.keys(excelMap);
+              for (var j = 0; j < pids.length; j++) {
+                var pid = pids[j];
+                var rawVal = excelMap[pid].raw;
+                var excelName = excelMap[pid].name;
+                var parsed = parseTuitionDate(rawVal);
+                var dbStudent = dbMap[pid];
+                var dbExisting = dbStudent ? (dbStudent.tuition_start_date || '') : '';
+                var dbName = dbStudent ? (dbStudent.full_name || '') : '';
+
+                var status;
+                if (duplicates[pid]) {
+                  status = 'DUPLICATE_MATCH';
+                } else if (!dbStudent) {
+                  status = 'STUDENT_NOT_FOUND';
+                } else if (!rawVal || String(rawVal).trim() === '') {
+                  status = 'EMPTY_DATE';
+                } else if (!parsed) {
+                  status = 'INVALID_DATE';
+                } else if (dbExisting) {
+                  status = 'READY_OVERWRITE';
+                } else {
+                  status = 'READY';
+                }
+
+                counts[status]++;
+                previewRows.push({ pid: pid, parsed: parsed, status: status, dbExisting: dbExisting });
+
+                var tr = document.createElement('tr');
+                tr.innerHTML =
+                  '<td>' + escHtml(pid) + '</td>' +
+                  '<td>' + escHtml(dbName || excelName) + '</td>' +
+                  '<td>' + escHtml(String(rawVal)) + '</td>' +
+                  '<td>' + escHtml(parsed || '—') + '</td>' +
+                  '<td>' + escHtml(dbExisting || '—') + '</td>' +
+                  '<td class="status-' + status + '">' + status + '</td>';
+                tbody.appendChild(tr);
+              }
+
+              // סיכום
+              var summaryEl = document.getElementById('summaryText');
+              summaryEl.innerHTML =
+                '<strong>סיכום Preview:</strong><br>' +
+                '<span class="status-READY">READY: ' + counts.READY + '</span> | ' +
+                '<span class="status-READY_OVERWRITE">READY_OVERWRITE: ' + counts.READY_OVERWRITE + '</span> | ' +
+                '<span class="status-STUDENT_NOT_FOUND">STUDENT_NOT_FOUND: ' + counts.STUDENT_NOT_FOUND + '</span> | ' +
+                '<span class="status-INVALID_DATE">INVALID_DATE: ' + counts.INVALID_DATE + '</span> | ' +
+                '<span class="status-EMPTY_DATE">EMPTY_DATE: ' + counts.EMPTY_DATE + '</span> | ' +
+                '<span class="status-DUPLICATE_MATCH">DUPLICATE_MATCH: ' + counts.DUPLICATE_MATCH + '</span>';
+
+              document.getElementById('summaryBox').style.display = 'block';
+              document.getElementById('previewBox').style.display = 'block';
+
+              var readyCount = counts.READY + (document.getElementById('allowOverwrite').checked ? counts.READY_OVERWRITE : 0);
+              document.getElementById('applyBtn').disabled = readyCount === 0;
+              addTuitionLog('Preview מוכן. ' + readyCount + ' שורות מוכנות לעדכון.', 'info');
+            });
+        } catch(err) {
+          addTuitionLog('שגיאה: ' + err.message, 'error');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    document.getElementById('applyBtn').addEventListener('click', function() {
+      var allowOverwrite = document.getElementById('allowOverwrite').checked;
+      var toUpdate = previewRows.filter(function(r) {
+        return r.status === 'READY' || (allowOverwrite && r.status === 'READY_OVERWRITE');
+      });
+
+      if (toUpdate.length === 0) { addTuitionLog('אין שורות לעדכון.', 'warn'); return; }
+
+      document.getElementById('applyBtn').disabled = true;
+      addTuitionLog('מתחיל עדכון ' + toUpdate.length + ' שורות...', 'info');
+
+      applyUpdates(toUpdate, 0, 0);
+    });
+
+    function applyUpdates(rows, idx, successCount) {
+      if (idx >= rows.length) {
+        addTuitionLog('=== עדכון הסתיים! ' + successCount + '/' + rows.length + ' עודכנו בהצלחה ===', 'success');
+        document.getElementById('applyBtn').disabled = false;
+        return;
+      }
+      var row = rows[idx];
+      db.from('students')
+        .update({ tuition_start_date: row.parsed })
+        .eq('passport_or_id', row.pid)
+        .then(function(result) {
+          if (result.error) {
+            addTuitionLog('✗ ' + row.pid + ': ' + result.error.message, 'error');
+          } else {
+            addTuitionLog('✓ ' + row.pid + ' → ' + row.parsed, 'success');
+            successCount++;
+          }
+          applyUpdates(rows, idx + 1, successCount);
+        });
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
 
     document.getElementById('importBtn').addEventListener('click', function() {
@@ -153,6 +459,7 @@
               if (eng) {
                 var val = String(row[keys[k]]).trim();
                 if (val && val !== 'undefined') {
+                  if (eng === 'tuition_currency') val = normalizeCurrency(val);
                   student[eng] = val;
                 }
               }

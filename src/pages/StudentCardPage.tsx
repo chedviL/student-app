@@ -1,10 +1,15 @@
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useParams } from "react-router-dom";
-import { Pencil, X, Check, Loader2 } from "lucide-react";
+import { Pencil, X, Check, Loader2, GraduationCap, ChevronLeft } from "lucide-react";
 import { useStudents } from "../context/StudentsContext";
+import { useAlumni } from "../context/AlumniContext";
 import { updateStudent } from "../api/studentsApi";
+import { graduateStudent } from "../api/alumniApi";
 import type { Student } from "../types/student";
+import { useStudentTuition } from "../hooks/useStudentTuition";
+import { TuitionModal } from "../components/tuition/TuitionModal";
+import "./SearchStudentPage.css";
 
 function fmtDate(val: string | undefined): string {
   if (!val) return "";
@@ -54,6 +59,8 @@ const DISPLAY_FIELDS: FieldDef[] = [
   { key: "paymentStatusNotes", label: "הערה" },
 ];
 
+// 12 data fields + 1 birthdate = 13 fields, rows 14+15 = action buttons
+
 // ─── helper: render value in view mode ───────────────────────────────────────
 
 function renderValue(
@@ -98,7 +105,8 @@ function renderValue(
 export default function StudentCardPage() {
   const { studentId } = useParams();
   const navigate = useNavigate();
-  const { students, loading, error, updateLocal } = useStudents();
+  const { students, loading, error, updateLocal, removeLocal } = useStudents();
+  const { addLocal: addAlumniLocal } = useAlumni();
 
   const [copied, setCopied]           = useState<string | null>(null);
   const [editMode, setEditMode]       = useState(false);
@@ -106,14 +114,43 @@ export default function StudentCardPage() {
   const [saving, setSaving]           = useState(false);
   const [saveError, setSaveError]     = useState("");
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [graduateConfirm, setGraduateConfirm] = useState(false);
+  const [graduating, setGraduating]           = useState(false);
+  const [graduateError, setGraduateError]     = useState("");
+  const [graduateDate, setGraduateDate]       = useState("");
+  const [showTuition, setShowTuition]         = useState(false);
 
   const student = useMemo(
     () =>
       students.find(
-        (s) => String(s.passportOrId || s.id || "") === String(studentId || "")
+        (s) => {
+          const sid = String(studentId || "");
+          if (s.passportOrId && String(s.passportOrId) === sid) return true;
+          if (String(s.id) === sid) return true;
+          return false;
+        }
       ) ?? null,
     [students, studentId]
   );
+
+  const { balance, loading: balLoading, refresh: refreshBalance } = useStudentTuition(student?.id ?? '');
+  const tuitionCurrency = balance?.currency ?? null;
+  const tuitionBal = balance?.currentBalance ?? 0;
+  const tuitionSym = tuitionCurrency === 'USD' ? '$' : '₪';
+  const tuitionLabel =
+    balLoading
+      ? '...'
+      : !tuitionCurrency || balance?.status === 'no_currency'
+      ? 'לא הוגדר'
+      : tuitionBal === 0
+      ? `0 ${tuitionSym}`
+      : `${tuitionBal > 0 ? '+' : ''}${tuitionBal.toLocaleString('he-IL', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${tuitionSym}`;
+  const tuitionBtnColor =
+    balLoading || !tuitionCurrency || balance?.status === 'no_currency'
+      ? { bg: 'linear-gradient(180deg,#f5f5f5,#e0e0e0)', color: '#666', border: '1px solid #ccc' }
+      : tuitionBal < 0
+      ? { bg: 'linear-gradient(180deg,#ffebee,#ef9a9a)', color: '#b71c1c', border: '1px solid rgba(198,40,40,0.4)' }
+      : { bg: 'linear-gradient(180deg,#e8f5e9,#a5d6a7)', color: '#1b5e20', border: '1px solid rgba(46,125,50,0.4)' };
 
   function copyPhone(phone: string, key: string) {
     navigator.clipboard.writeText(phone);
@@ -151,6 +188,23 @@ export default function StudentCardPage() {
       setSaveError(err instanceof Error ? err.message : "שגיאה בשמירה");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleGraduate() {
+    if (!student) return;
+    if (!graduateDate) { setGraduateError("יש להזין תאריך יציאה"); return; }
+    setGraduating(true);
+    setGraduateError("");
+    try {
+      const alumnus = await graduateStudent(student.id, graduateDate);
+      removeLocal(student.id);
+      addAlumniLocal(alumnus);
+      navigate("/database");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "שגיאה בהעברה";
+      setGraduateError(msg.includes("כפילות") || msg.includes("unique") ? "בוגר עם ת״ז זו כבר קיים" : msg);
+      setGraduating(false);
     }
   }
 
@@ -197,6 +251,41 @@ export default function StudentCardPage() {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
     >
+      {/* ── Graduate confirm modal ── */}
+      {graduateConfirm && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center" }}
+          onClick={() => !graduating && setGraduateConfirm(false)}>
+          <div style={{ background: "#fffdf8", border: "1px solid #d9b980", borderRadius: 22, padding: 28, width: 400, maxWidth: "90vw", textAlign: "center", boxShadow: "0 20px 50px rgba(92,53,23,0.2)", direction: "rtl" }}
+            onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 900, color: "#5b331a" }}>העברה לבוגרים</h3>
+            <p style={{ color: "#5b331a", marginBottom: 18, fontSize: 15 }}>
+              {student.lastName} {student.firstName}
+            </p>
+
+            <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#8b6544", marginBottom: 6, textAlign: "right" }}>תאריך יציאה</label>
+            <input
+              type="date"
+              value={graduateDate}
+              onChange={(e) => setGraduateDate(e.target.value)}
+              style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: "1.5px solid #e7d4af", background: "#fffdf8", color: "#3a1e08", fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box", marginBottom: 16, direction: "ltr" }}
+            />
+
+            {graduateError && <p style={{ color: "#c00", marginBottom: 12, fontSize: 14 }}>{graduateError}</p>}
+
+            <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+              <button onClick={handleGraduate} disabled={graduating || !graduateDate}
+                style={{ background: graduating || !graduateDate ? "#e0e0e0" : "linear-gradient(180deg,#1565c0,#0d47a1)", color: graduating || !graduateDate ? "#999" : "#fff", border: "none", borderRadius: 12, padding: "10px 22px", fontSize: 15, fontWeight: 700, cursor: graduating || !graduateDate ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 8, transition: "background 0.2s" }}>
+                {graduating ? <Loader2 size={16} className="spin" /> : <GraduationCap size={16} />}
+                {graduating ? "מעביר..." : "אשר יציאה"}
+              </button>
+              <button onClick={() => { setGraduateConfirm(false); setGraduateError(""); setGraduateDate(""); }}
+                style={{ background: "#f5f5f5", color: "#666", border: "1px solid #d9b980", borderRadius: 12, padding: "10px 22px", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+                בטל
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <motion.div
         className="search-shell"
         variants={containerVariants}
@@ -209,10 +298,12 @@ export default function StudentCardPage() {
           <div className="profile-card-topbar">
             <div className="profile-action-btns">
               {!editMode ? (
-                <button className="profile-edit-btn" onClick={enterEdit}>
-                  <Pencil size={16} />
-                  ערוך
-                </button>
+                <>
+                  <button className="profile-edit-btn" onClick={enterEdit}>
+                    <Pencil size={16} />
+                    ערוך
+                  </button>
+                </>
               ) : (
                 <>
                   <button className="profile-save-btn" onClick={saveEdit} disabled={saving}>
@@ -299,8 +390,9 @@ export default function StudentCardPage() {
             </AnimatePresence>
           </div>
 
-          {/* ── Fields grid ─────────────────────────────────────────────────── */}
+          {/* ── Unified grid: 12 data fields + birthdate + 2 action buttons ─── */}
           <motion.div className="student-profile-grid" variants={containerVariants}>
+            {/* Data fields */}
             {DISPLAY_FIELDS.map((field) => (
               <motion.div className="profile-item" key={field.key} variants={itemVariants}>
                 <span className="profile-label">{field.label}</span>
@@ -346,22 +438,51 @@ export default function StudentCardPage() {
               )}
             </motion.div>
 
-            {/* מצב שכ"ל */}
-            <motion.div className="profile-item" variants={itemVariants}>
-              <span className="profile-label">מצב שכ"ל</span>
-              <span className="tuition-badge tuition-neutral">טרם עודכן</span>
+            {/* כפתור חזרה */}
+            <motion.div className="profile-item profile-item-btn" variants={itemVariants}>
+              <button className="profile-grid-btn profile-grid-btn--back" onClick={() => navigate(-1)}>
+                חזרה
+              </button>
             </motion.div>
-          </motion.div>
 
-          {/* ── Back button ─────────────────────────────────────────────────── */}
-          <div className="profile-back-row">
-            <button className="back-button" onClick={() => navigate(-1)}>
-              חזרה
-            </button>
-          </div>
+            {/* כפתור מצב שכ"ל */}
+            <motion.div className="profile-item profile-item-btn" variants={itemVariants}>
+              <button
+                className="profile-grid-btn"
+                onClick={() => setShowTuition(true)}
+                style={{ background: tuitionBtnColor.bg, color: tuitionBtnColor.color, border: tuitionBtnColor.border }}
+              >
+                <span className="profile-tuition-label" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  מצב שכ"ל <ChevronLeft size={14} />
+                </span>
+                <span className="profile-tuition-balance">{tuitionLabel}</span>
+              </button>
+            </motion.div>
+
+            {/* כפתור יצא / ריק במצב עריכה */}
+            <motion.div className="profile-item profile-item-btn" variants={itemVariants}>
+              {!editMode ? (
+                <button
+                  className="profile-grid-btn profile-grid-btn--graduate"
+                  onClick={() => { setGraduateError(""); setGraduateDate(""); setGraduateConfirm(true); }}
+                >
+                  <GraduationCap size={16} />
+                  יצא
+                </button>
+              ) : (
+                <span style={{ color: "transparent" }}>—</span>
+              )}
+            </motion.div>
+
+          </motion.div>
 
         </motion.section>
       </motion.div>
+
+      {/* ── Tuition modal ─────────────────────────────────────────────── */}
+      {showTuition && (
+        <TuitionModal student={student} onClose={() => setShowTuition(false)} onTransactionAdded={refreshBalance} />
+      )}
     </motion.div>
   );
 }

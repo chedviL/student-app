@@ -27,6 +27,9 @@ export interface Student {
 
   tuition: string;
   tuitionRank: string;
+  tuitionCurrency: string | null;
+  siblings: string;
+  tuitionStartDate: string | null;  // date in DB — Supabase returns YYYY-MM-DD string or null
   dueDateNote: string;
   paymentMethod: string;
   paymentStatusNotes: string;
@@ -43,3 +46,5 @@ export interface Student {
   religion?: string;
   religionStudies?: string;
 }
+
+export type Alumni = Student & { graduatedAt: string; alumniPhone: string };
