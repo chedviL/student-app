@@ -130,11 +130,6 @@ try {
 ║  Build:         ${results.build.padEnd(40)}║
 ║  E2E:           ${results.e2e.padEnd(40)}║
 ╠══════════════════════════════════════════════════════════╣
-║  KNOWN BUG (not a test failure):                         ║
-║  transaction_date is set to 1st of month (billing_month) ║
-║  SPEC requires: charge=20th, payment=21st                ║
-║  Fix needed in process_monthly_tuition SQL function      ║
-╠══════════════════════════════════════════════════════════╣
 ║  PENDING / NOT IMPLEMENTED:                              ║
 ║  - Student photos (photo_path, Storage bucket)           ║
 ║  - Import HTML parser tests (import-students.html)       ║

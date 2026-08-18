@@ -6,7 +6,7 @@
 
 export const FIXTURES = {
   AUTOTEST_AUTO_ILS: {
-    id: '00000000-test-0001-0000-000000000001',
+    id: '00000000-0000-4001-a000-000000000001',
     first_name: 'AutoILS',
     last_name: 'AUTOTEST',
     full_name: 'AUTOTEST AutoILS',
@@ -17,7 +17,7 @@ export const FIXTURES = {
     tuition_start_date: '2026-01-01',
   },
   AUTOTEST_AUTO_USD: {
-    id: '00000000-test-0002-0000-000000000002',
+    id: '00000000-0000-4002-a000-000000000002',
     first_name: 'AutoUSD',
     last_name: 'AUTOTEST',
     full_name: 'AUTOTEST AutoUSD',
@@ -28,7 +28,7 @@ export const FIXTURES = {
     tuition_start_date: '2026-01-01',
   },
   AUTOTEST_BANK: {
-    id: '00000000-test-0003-0000-000000000003',
+    id: '00000000-0000-4003-a000-000000000003',
     first_name: 'Bank',
     last_name: 'AUTOTEST',
     full_name: 'AUTOTEST Bank',
@@ -39,7 +39,7 @@ export const FIXTURES = {
     tuition_start_date: '2026-01-01',
   },
   AUTOTEST_AA: {
-    id: '00000000-test-0004-0000-000000000004',
+    id: '00000000-0000-4004-a000-000000000004',
     first_name: 'AA',
     last_name: 'AUTOTEST',
     full_name: 'AUTOTEST AA',
@@ -50,7 +50,7 @@ export const FIXTURES = {
     tuition_start_date: '2026-01-01',
   },
   AUTOTEST_CASH: {
-    id: '00000000-test-0005-0000-000000000005',
+    id: '00000000-0000-4005-a000-000000000005',
     first_name: 'Cash',
     last_name: 'AUTOTEST',
     full_name: 'AUTOTEST Cash',
@@ -61,7 +61,7 @@ export const FIXTURES = {
     tuition_start_date: '2026-01-01',
   },
   AUTOTEST_CHARITY: {
-    id: '00000000-test-0006-0000-000000000006',
+    id: '00000000-0000-4006-a000-000000000006',
     first_name: 'Charity',
     last_name: 'AUTOTEST',
     full_name: 'AUTOTEST Charity',
@@ -72,7 +72,7 @@ export const FIXTURES = {
     tuition_start_date: '2026-01-01',
   },
   AUTOTEST_TRACKING: {
-    id: '00000000-test-0007-0000-000000000007',
+    id: '00000000-0000-4007-a000-000000000007',
     first_name: 'Tracking',
     last_name: 'AUTOTEST',
     full_name: 'AUTOTEST Tracking',
@@ -83,7 +83,7 @@ export const FIXTURES = {
     tuition_start_date: '2026-01-01',
   },
   AUTOTEST_NEGATIVE_RANK: {
-    id: '00000000-test-0008-0000-000000000008',
+    id: '00000000-0000-4008-a000-000000000008',
     first_name: 'NegRank',
     last_name: 'AUTOTEST',
     full_name: 'AUTOTEST NegRank',
@@ -94,7 +94,7 @@ export const FIXTURES = {
     tuition_start_date: '2026-01-01',
   },
   AUTOTEST_NO_CURRENCY: {
-    id: '00000000-test-0009-0000-000000000009',
+    id: '00000000-0000-4009-a000-000000000009',
     first_name: 'NoCurrency',
     last_name: 'AUTOTEST',
     full_name: 'AUTOTEST NoCurrency',
@@ -105,7 +105,7 @@ export const FIXTURES = {
     tuition_start_date: '2026-01-01',
   },
   AUTOTEST_NO_START: {
-    id: '00000000-test-0010-0000-000000000010',
+    id: '00000000-0000-4010-a000-000000000010',
     first_name: 'NoStart',
     last_name: 'AUTOTEST',
     full_name: 'AUTOTEST NoStart',
@@ -116,7 +116,7 @@ export const FIXTURES = {
     tuition_start_date: null,
   },
   AUTOTEST_ZERO_TUITION: {
-    id: '00000000-test-0011-0000-000000000011',
+    id: '00000000-0000-4011-a000-000000000011',
     first_name: 'ZeroTuition',
     last_name: 'AUTOTEST',
     full_name: 'AUTOTEST ZeroTuition',
@@ -127,7 +127,7 @@ export const FIXTURES = {
     tuition_start_date: '2026-01-01',
   },
   AUTOTEST_INVALID_TUITION: {
-    id: '00000000-test-0012-0000-000000000012',
+    id: '00000000-0000-4012-a000-000000000012',
     first_name: 'InvalidTuition',
     last_name: 'AUTOTEST',
     full_name: 'AUTOTEST InvalidTuition',
@@ -138,7 +138,7 @@ export const FIXTURES = {
     tuition_start_date: '2026-01-01',
   },
   AUTOTEST_DECIMAL: {
-    id: '00000000-test-0013-0000-000000000013',
+    id: '00000000-0000-4013-a000-000000000013',
     first_name: 'Decimal',
     last_name: 'AUTOTEST',
     full_name: 'AUTOTEST Decimal',
@@ -149,7 +149,7 @@ export const FIXTURES = {
     tuition_start_date: '2026-01-01',
   },
   AUTOTEST_FUTURE_START: {
-    id: '00000000-test-0014-0000-000000000014',
+    id: '00000000-0000-4014-a000-000000000014',
     first_name: 'FutureStart',
     last_name: 'AUTOTEST',
     full_name: 'AUTOTEST FutureStart',
@@ -160,7 +160,7 @@ export const FIXTURES = {
     tuition_start_date: '2099-01-01',
   },
   AUTOTEST_OLD_START: {
-    id: '00000000-test-0015-0000-000000000015',
+    id: '00000000-0000-4015-a000-000000000015',
     first_name: 'OldStart',
     last_name: 'AUTOTEST',
     full_name: 'AUTOTEST OldStart',
@@ -176,7 +176,7 @@ export const FIXTURES = {
     })(),
   },
   AUTOTEST_DEBT: {
-    id: '00000000-test-0016-0000-000000000016',
+    id: '00000000-0000-4016-a000-000000000016',
     first_name: 'Debt',
     last_name: 'AUTOTEST',
     full_name: 'AUTOTEST Debt',
@@ -187,7 +187,7 @@ export const FIXTURES = {
     tuition_start_date: '2026-01-01',
   },
   AUTOTEST_CREDIT_BALANCE: {
-    id: '00000000-test-0017-0000-000000000017',
+    id: '00000000-0000-4017-a000-000000000017',
     first_name: 'CreditBalance',
     last_name: 'AUTOTEST',
     full_name: 'AUTOTEST CreditBalance',
@@ -198,7 +198,7 @@ export const FIXTURES = {
     tuition_start_date: '2026-01-01',
   },
   AUTOTEST_GRADUATE: {
-    id: '00000000-test-0018-0000-000000000018',
+    id: '00000000-0000-4018-a000-000000000018',
     first_name: 'Graduate',
     last_name: 'AUTOTEST',
     full_name: 'AUTOTEST Graduate',
@@ -210,7 +210,7 @@ export const FIXTURES = {
   },
   // Whitespace rank — should behave like 'אשראי' after trim
   AUTOTEST_WHITESPACE_RANK: {
-    id: '00000000-test-0019-0000-000000000019',
+    id: '00000000-0000-4019-a000-000000000019',
     first_name: 'WhitespaceRank',
     last_name: 'AUTOTEST',
     full_name: 'AUTOTEST WhitespaceRank',

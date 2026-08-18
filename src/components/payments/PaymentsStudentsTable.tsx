@@ -47,7 +47,12 @@ export default function PaymentsStudentsTable({
   const filtered = useMemo(() => {
     let list = students.filter((s) => {
       const q = search.toLowerCase();
-      if (q && !`${s.lastName} ${s.firstName}`.toLowerCase().includes(q) && !s.passportOrId.includes(q)) return false;
+      if (q &&
+        !`${s.lastName} ${s.firstName}`.toLowerCase().includes(q) &&
+        !s.passportOrId.includes(q) &&
+        !(s.className ?? '').toLowerCase().includes(q) &&
+        !(s.fatherName ?? '').toLowerCase().includes(q)
+      ) return false;
       if (filterCurrency && s.tuitionCurrency !== filterCurrency) return false;
       if (filterRank && s.tuitionRank !== filterRank) return false;
       const bal = balanceMap.get(s.id);
@@ -85,7 +90,12 @@ export default function PaymentsStudentsTable({
     <div style={{ direction: 'rtl' }}>
       {/* Toolbar */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 16, alignItems: 'center' }}>
-        <input style={{ ...inp, flex: '1 1 180px' }} placeholder="חיפוש שם / ת&quot;ז" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <input
+          style={{ ...inp, flex: '1 1 180px' }}
+          placeholder="חיפוש שם / ת&quot;ז / שיעור / שם האב"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
         <select style={inp} value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as FilterStatus)}>
           <option value="all">כולם</option>
           <option value="debt">חייבים</option>
@@ -129,6 +139,8 @@ export default function PaymentsStudentsTable({
                 שם {sortKey === 'name' ? (sortAsc ? '↑' : '↓') : ''}
               </th>
               <th style={{ padding: '8px 12px', textAlign: 'right' }}>ת"ז / דרכון</th>
+              <th style={{ padding: '8px 12px', textAlign: 'right' }}>שיעור</th>
+              <th style={{ padding: '8px 12px', textAlign: 'right' }}>שם האב</th>
               <th style={{ padding: '8px 12px', textAlign: 'right' }}>שכ"ל חודשי</th>
               <th style={{ padding: '8px 12px', textAlign: 'right' }}>מטבע</th>
               <th style={{ padding: '8px 12px', textAlign: 'right' }}>דירוג</th>
@@ -143,7 +155,7 @@ export default function PaymentsStudentsTable({
           </thead>
           <tbody>
             {filtered.length === 0 && (
-              <tr><td colSpan={7} style={{ textAlign: 'center', padding: 24, color: '#8b6544' }}>לא נמצאו תלמידים</td></tr>
+              <tr><td colSpan={9} style={{ textAlign: 'center', padding: 24, color: '#8b6544' }}>לא נמצאו תלמידים</td></tr>
             )}
             {filtered.map((s) => {
               const bal = balanceMap.get(s.id);
@@ -159,6 +171,8 @@ export default function PaymentsStudentsTable({
                 >
                   <td style={{ padding: '9px 12px', fontWeight: 700, color: '#4c2415' }}>{s.lastName} {s.firstName}</td>
                   <td style={{ padding: '9px 12px', color: '#8b6544' }}>{s.passportOrId || '—'}</td>
+                  <td style={{ padding: '9px 12px', color: '#8b6544' }}>{s.className || '—'}</td>
+                  <td style={{ padding: '9px 12px', color: '#8b6544' }}>{s.fatherName || '—'}</td>
                   <td style={{ padding: '9px 12px', color: '#5a3420' }}>{s.tuition ? `${s.tuition} ${sym}` : '—'}</td>
                   <td style={{ padding: '9px 12px', color: '#5a3420' }}>{s.tuitionCurrency || '—'}</td>
                   <td style={{ padding: '9px 12px', color: '#8b6544' }}>{s.tuitionRank || '—'}</td>

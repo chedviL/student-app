@@ -2,11 +2,20 @@
  * INTEGRATION TESTS — process_monthly_tuition
  * Requires .env.test.local with valid Supabase credentials.
  * Runs against real DB — fixtures are created/cleaned automatically.
+ *
+ * ISOLATION STRATEGY:
+ * - Global beforeAll seeds all fixtures once.
+ * - Describes that mutate tuition_transactions use a beforeEach that
+ *   wipes only their own fixture IDs and re-seeds those students,
+ *   so each test starts from a known-clean state regardless of run order.
+ * - All tests run sequentially (vitest.integration.config.ts: singleFork).
  */
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { adminClient, seedFixtures, cleanupFixtures } from './integrationSetup';
 import { FIXTURES, TEST_BILLING_MONTH, TEST_BILLING_MONTH_2 } from '../fixtures/fixtures';
 import { assertDestructiveTestsAllowed } from '../guards/destructiveGuard';
+
+// ─── Global setup / teardown ──────────────────────────────────────────────────
 
 beforeAll(async () => {
   assertDestructiveTestsAllowed();
@@ -16,6 +25,8 @@ beforeAll(async () => {
 afterAll(async () => {
   await cleanupFixtures();
 });
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function runMonthlyTuition(billingMonth: string) {
   const { data, error } = await adminClient.rpc('process_monthly_tuition', {
@@ -33,6 +44,26 @@ async function getTxForStudent(studentId: string, billingMonth: string) {
     .eq('billing_month', billingMonth);
   if (error) throw new Error(error.message);
   return data ?? [];
+}
+
+/**
+ * Delete all tuition_transactions for the given student IDs,
+ * then re-insert those students so they start clean.
+ * Touches ONLY AUTOTEST fixture IDs — never real data.
+ */
+async function resetFixtures(ids: string[]) {
+  await adminClient.from('tuition_transactions').delete().in('student_id', ids);
+  // Re-seed only these students (upsert so no PK conflict)
+  const { FIXTURES: F } = await import('../fixtures/fixtures');
+  const rows = Object.values(F)
+    .filter((f) => ids.includes(f.id))
+    .map((f) => ({ ...f }));
+  if (rows.length > 0) {
+    const { error } = await adminClient
+      .from('students')
+      .upsert(rows, { onConflict: 'id' });
+    if (error) throw new Error(`resetFixtures upsert failed: ${error.message}`);
+  }
 }
 
 // ─── Eligibility ──────────────────────────────────────────────────────────────
@@ -191,20 +222,22 @@ describe('process_monthly_tuition — source field', () => {
   });
 });
 
-// ─── REGRESSION: transaction_date ────────────────────────────────────────────
-// SPEC says: monthly_charge → 20th, automatic_payment → 21st
-// KNOWN BUG: current implementation sets transaction_date = p_billing_month (1st)
-// This test documents the current behavior and will FAIL when the bug is fixed.
+// ─── Transaction dates ────────────────────────────────────────────────────────
+// SPEC: monthly_charge → 20th of billing month, automatic_payment → 21st
 
-describe('process_monthly_tuition — transaction_date (KNOWN BUG)', () => {
-  it('BUG: monthly_charge transaction_date is currently 1st of month (should be 20th)', async () => {
+describe('process_monthly_tuition — transaction dates', () => {
+  it('monthly_charge transaction_date is 20th of billing month', async () => {
     const id = FIXTURES.AUTOTEST_CASH.id;
     const txs = await getTxForStudent(id, TEST_BILLING_MONTH);
     const charge = txs.find((t) => t.transaction_type === 'monthly_charge');
-    // Current behavior: date = billing_month (1st)
-    // Expected per SPEC: date = 20th of billing month
-    // This test documents the bug — do NOT change business logic to make it green
-    expect(charge?.transaction_date).toBe(TEST_BILLING_MONTH); // BUG: should be '2026-03-20'
+    expect(charge?.transaction_date).toBe('2026-03-20');
+  });
+
+  it('automatic_payment transaction_date is 21st of billing month', async () => {
+    const id = FIXTURES.AUTOTEST_AUTO_ILS.id;
+    const txs = await getTxForStudent(id, TEST_BILLING_MONTH);
+    const payment = txs.find((t) => t.transaction_type === 'automatic_payment');
+    expect(payment?.transaction_date).toBe('2026-03-21');
   });
 });
 
@@ -244,7 +277,7 @@ describe('tuition_balances view', () => {
   });
 
   it('multi-month debt accumulates correctly', async () => {
-    // Run a second month for AUTOTEST_CASH
+    // Run a second month for AUTOTEST_CASH only
     await runMonthlyTuition(TEST_BILLING_MONTH_2);
     const id = FIXTURES.AUTOTEST_CASH.id;
     const { data } = await adminClient
@@ -322,15 +355,24 @@ describe('tuition_monthly_history view', () => {
 });
 
 // ─── Manual transactions ──────────────────────────────────────────────────────
+// Each test gets a clean state: transactions wiped, student re-seeded.
+// This guarantees isolation regardless of run order or prior suite state.
 
 describe('manual transactions', () => {
   const DEBT_ID = FIXTURES.AUTOTEST_DEBT.id;
+  const CREDIT_ID = FIXTURES.AUTOTEST_CREDIT_BALANCE.id;
+
+  beforeEach(async () => {
+    // Wipe all transactions for the two students used in this describe,
+    // then upsert them back to their original fixture state.
+    await resetFixtures([DEBT_ID, CREDIT_ID]);
+  });
 
   it('manual payment reduces debt', async () => {
-    // First charge the student
+    // Charge the student → -700
     await runMonthlyTuition(TEST_BILLING_MONTH);
 
-    // Add manual payment
+    // Add manual payment +300
     const { error } = await adminClient.from('tuition_transactions').insert({
       student_id: DEBT_ID,
       billing_month: TEST_BILLING_MONTH,
@@ -343,25 +385,49 @@ describe('manual transactions', () => {
     });
     expect(error).toBeNull();
 
-    const { data } = await adminClient
+    // tuition_balances: -700 + 300 = -400
+    const { data: balanceData } = await adminClient
       .from('tuition_balances')
-      .select('current_balance')
+      .select('current_balance, status')
       .eq('student_id', DEBT_ID)
       .single();
-    expect(Number(data?.current_balance)).toBe(-400); // -700 + 300
+    expect(Number(balanceData?.current_balance)).toBe(-400);
+    expect(balanceData?.status).toBe('debt');
+
+    // transaction appears in tuition_transactions
+    const txs = await getTxForStudent(DEBT_ID, TEST_BILLING_MONTH);
+    expect(txs.find((t) => t.transaction_type === 'manual_payment')).toBeDefined();
+
+    // transaction appears in tuition_monthly_history
+    const { data: history } = await adminClient
+      .from('tuition_monthly_history')
+      .select('credits, balance_after_month')
+      .eq('student_id', DEBT_ID)
+      .eq('billing_month', TEST_BILLING_MONTH)
+      .single();
+    expect(history).toBeDefined();
+    expect(Number(history?.credits)).toBeGreaterThan(0);
   });
 
   it('multiple manual payments in same month are all allowed', async () => {
-    const { error } = await adminClient.from('tuition_transactions').insert({
-      student_id: DEBT_ID,
-      billing_month: TEST_BILLING_MONTH,
-      transaction_date: TEST_BILLING_MONTH,
-      amount: 100,
-      currency: 'ILS',
-      transaction_type: 'manual_payment',
-      source: 'manual',
-    });
-    expect(error).toBeNull();
+    // Charge first so the student has a balance row
+    await runMonthlyTuition(TEST_BILLING_MONTH);
+
+    const insert = (amount: number) =>
+      adminClient.from('tuition_transactions').insert({
+        student_id: DEBT_ID,
+        billing_month: TEST_BILLING_MONTH,
+        transaction_date: TEST_BILLING_MONTH,
+        amount,
+        currency: 'ILS',
+        transaction_type: 'manual_payment',
+        source: 'manual',
+      });
+
+    const { error: e1 } = await insert(300);
+    expect(e1).toBeNull();
+    const { error: e2 } = await insert(100);
+    expect(e2).toBeNull();
 
     const txs = await getTxForStudent(DEBT_ID, TEST_BILLING_MONTH);
     const manualPayments = txs.filter((t) => t.transaction_type === 'manual_payment');
@@ -369,26 +435,55 @@ describe('manual transactions', () => {
   });
 
   it('credit balance: payment > charge → positive balance → ok', async () => {
-    const id = FIXTURES.AUTOTEST_CREDIT_BALANCE.id;
+    // Charge → -700
     await runMonthlyTuition(TEST_BILLING_MONTH);
 
-    await adminClient.from('tuition_transactions').insert({
-      student_id: id,
+    // Manual payment +900 → net +200
+    const { error } = await adminClient.from('tuition_transactions').insert({
+      student_id: CREDIT_ID,
       billing_month: TEST_BILLING_MONTH,
       transaction_date: TEST_BILLING_MONTH,
-      amount: 900, // more than 700 charge
+      amount: 900,
       currency: 'ILS',
       transaction_type: 'manual_payment',
       source: 'manual',
     });
+    expect(error).toBeNull();
 
-    const { data } = await adminClient
+    // tuition_balances: -700 + 900 = +200, status = ok
+    const { data: balanceData } = await adminClient
       .from('tuition_balances')
-      .select('*')
-      .eq('student_id', id)
+      .select('current_balance, status')
+      .eq('student_id', CREDIT_ID)
       .single();
-    expect(Number(data?.current_balance)).toBe(200);
-    expect(data?.status).toBe('ok');
+    expect(Number(balanceData?.current_balance)).toBe(200);
+    expect(balanceData?.status).toBe('ok');
+
+    // transaction appears in tuition_transactions
+    const txs = await getTxForStudent(CREDIT_ID, TEST_BILLING_MONTH);
+    expect(txs.find((t) => t.transaction_type === 'manual_payment')).toBeDefined();
+
+    // transaction appears in tuition_monthly_history
+    const { data: history } = await adminClient
+      .from('tuition_monthly_history')
+      .select('credits, balance_after_month')
+      .eq('student_id', CREDIT_ID)
+      .eq('billing_month', TEST_BILLING_MONTH)
+      .single();
+    expect(history).toBeDefined();
+    expect(Number(history?.balance_after_month)).toBe(200);
+  });
+
+  // Regression: proves multi-month debt test cannot contaminate manual payment tests
+  it('is isolated from multi-month debt state (regression)', async () => {
+    // Even if another describe has run process_monthly_tuition(TEST_BILLING_MONTH_2)
+    // for AUTOTEST_CASH, DEBT_ID starts clean here because of beforeEach.
+    const txsBefore = await getTxForStudent(DEBT_ID, TEST_BILLING_MONTH);
+    expect(txsBefore.filter((t) => t.transaction_type === 'monthly_charge').length).toBe(0);
+
+    await runMonthlyTuition(TEST_BILLING_MONTH);
+    const txsAfter = await getTxForStudent(DEBT_ID, TEST_BILLING_MONTH);
+    expect(txsAfter.filter((t) => t.transaction_type === 'monthly_charge').length).toBe(1);
   });
 });
 
