@@ -93,7 +93,7 @@ export default function PaymentsOverview({
     if (!s.tuitionCurrency) return 'מטבע לא הוגדר';
     if (noCurrencyIds.has(s.id)) return 'סטטוס no_currency';
     const tuitionNum = parseFloat(s.tuition);
-    if (tuitionNum > 0 && !s.tuitionStartDate) return 'תאריך התחלה חסר';
+    if (tuitionNum > 0 && !s.tuitionStartDate) return 'חסר תאריך תחילת גבייה';
     return 'דורש בדיקה';
   }
 

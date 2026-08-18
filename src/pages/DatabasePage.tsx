@@ -2,7 +2,8 @@ import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Users, BookOpen, MapPin, Check, X, Loader2, Pencil, Download, UserPlus, GraduationCap } from "lucide-react";
-import * as XLSX from "xlsx";
+import { exportToExcel, todayStr } from "../utils/excelExport";
+import type { ExportColDef } from "../utils/excelExport";
 import { useStudents } from "../context/StudentsContext";
 import { useAlumni } from "../context/AlumniContext";
 import { updateStudent, createStudent } from "../api/studentsApi";
@@ -383,20 +384,22 @@ export default function DatabasePage() {
     }
   }
 
-  function exportToExcel() {
-    const cols = COLUMNS.filter((c) => selectedExportFields.has(c.key));
-    const headers = cols.map((c) => c.label);
-    const rows = displayed.map((s) =>
-      cols.map((c) => String((s as unknown as Record<string, unknown>)[c.key] ?? ""))
+  function handleExportToExcel() {
+    const exportCols: ExportColDef[] = COLUMNS
+      .filter((c) => selectedExportFields.has(c.key))
+      .map((c) => ({
+        key: c.key,
+        label: c.label,
+        type: c.key === 'gregorianDate' ? 'date'
+            : c.key === 'tuition' ? 'number'
+            : undefined,
+      }));
+    exportToExcel(
+      displayed as unknown as Record<string, unknown>[],
+      exportCols,
+      'תלמידים',
+      `רשימת_תלמידים_${todayStr()}.xlsx`,
     );
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    ws["!cols"] = headers.map((h, i) => ({
-      wch: Math.max(h.length + 2, ...rows.map((r) => String(r[i] || "").length + 2)),
-    }));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "תלמידים");
-    wb.Workbook = { Views: [{ RTL: true }] };
-    XLSX.writeFile(wb, `תלמידים_${new Date().toLocaleDateString("he-IL").replace(/\//g, "-")}.xlsx`);
     setShowExportModal(false);
   }
 
@@ -487,7 +490,7 @@ export default function DatabasePage() {
                 ))}
               </div>
               <div className="export-modal-footer">
-                <button className="db-export-btn" onClick={exportToExcel} disabled={selectedExportFields.size === 0}>
+                <button className="db-export-btn" onClick={handleExportToExcel} disabled={selectedExportFields.size === 0}>
                   <Download size={15} /> ייצוא ({selectedExportFields.size} שדות)
                 </button>
                 <button className="export-modal-cancel" onClick={() => setShowExportModal(false)}>בטל</button>

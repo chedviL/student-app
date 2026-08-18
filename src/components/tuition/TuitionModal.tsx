@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Loader2 } from 'lucide-react';
+import { X, Plus, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useStudentTuition } from '../../hooks/useStudentTuition';
 import { MonthRow, AddPaymentForm, fmtAmount } from './TuitionSection';
-import type { TuitionCurrency, NewManualTransaction } from '../../types/tuition';
+import type { TuitionCurrency, NewManualTransaction, TuitionMonthSummary } from '../../types/tuition';
 import type { Student } from '../../types/student';
 
 interface TuitionModalProps {
@@ -15,11 +15,31 @@ interface TuitionModalProps {
 export function TuitionModal({ student, onClose, onTransactionAdded }: TuitionModalProps) {
   const { balance, history, loading, error, addTransaction, editTransaction, removeTransaction } = useStudentTuition(student.id);
   const [showForm, setShowForm] = useState(false);
-  const [showAll, setShowAll] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const currentYear = new Date().getFullYear().toString();
-  const visibleHistory = showAll ? history : history.filter(m => m.billingMonth.startsWith(currentYear));
-  const hasOlder = history.some(m => !m.billingMonth.startsWith(currentYear));
+
+  // Group history by year
+  const historyByYear = useMemo(() => {
+    const map = new Map<string, TuitionMonthSummary[]>();
+    for (const m of history) {
+      const y = m.billingMonth.slice(0, 4);
+      if (!map.has(y)) map.set(y, []);
+      map.get(y)!.push(m);
+    }
+    // Sort years descending
+    return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+  }, [history]);
+
+  // Which past years are expanded
+  const [expandedYears, setExpandedYears] = useState<Set<string>>(new Set());
+  function toggleYear(y: string) {
+    setExpandedYears(prev => {
+      const next = new Set(prev);
+      next.has(y) ? next.delete(y) : next.add(y);
+      return next;
+    });
+  }
 
   const currency = (balance?.currency ?? null) as TuitionCurrency | null;
   const bal = balance?.currentBalance ?? 0;
@@ -81,7 +101,7 @@ export function TuitionModal({ student, onClose, onTransactionAdded }: TuitionMo
         style={{
           position: 'fixed', inset: 0, zIndex: 501,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: '24px 16px', direction: 'rtl',
+          padding: '16px', direction: 'rtl',
         }}
       >
         {/* Modal card — scrolls internally */}
@@ -89,7 +109,8 @@ export function TuitionModal({ student, onClose, onTransactionAdded }: TuitionMo
           onClick={(e) => e.stopPropagation()}
           style={{
             width: '100%', maxWidth: 760,
-            maxHeight: 'calc(100vh - 48px)',
+            maxHeight: 'calc(100vh - 32px)',
+            marginTop: 40,
             display: 'flex', flexDirection: 'column',
             background: '#fffdf8', borderRadius: 22,
             boxShadow: '0 24px 64px rgba(92,53,23,0.22)',
@@ -134,11 +155,12 @@ export function TuitionModal({ student, onClose, onTransactionAdded }: TuitionMo
               <p style={{ color: '#c62828', fontSize: 14, textAlign: 'center' }}>{error}</p>
             ) : (
               <>
-                {(student.tuitionRank || student.tuition) && (
+                  {(student.tuitionRank || student.tuition) && (
                   <div style={{
                     display: 'inline-flex', gap: 12, marginBottom: 16,
                     padding: '8px 14px', background: 'rgba(245,230,200,0.4)',
                     borderRadius: 12, border: '1px solid rgba(200,134,63,0.2)', direction: 'rtl',
+                    flexWrap: 'wrap',
                   }}>
                     {student.tuitionRank && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -216,55 +238,102 @@ export function TuitionModal({ student, onClose, onTransactionAdded }: TuitionMo
 
                 <div style={{ height: 1, background: 'linear-gradient(90deg,transparent,rgba(200,134,63,0.4),transparent)', margin: '4px 0 16px' }} />
 
-                <div style={{ fontSize: 15, fontWeight: 900, color: '#5a3420', marginBottom: 12 }}>
-                  היסטוריית שכ"ל
-                </div>
+                <button
+                  onClick={() => setShowHistory(v => !v)}
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '10px 14px', borderRadius: 12, marginBottom: showHistory ? 0 : 4,
+                    border: '1px solid rgba(200,134,63,0.3)',
+                    background: 'rgba(245,230,200,0.35)',
+                    cursor: 'pointer', fontFamily: 'inherit',
+                  }}
+                >
+                  <span style={{ fontSize: 15, fontWeight: 900, color: '#5a3420' }}>היסטוריית שכ"ל</span>
+                  {showHistory ? <ChevronUp size={16} style={{ color: '#8b6544' }} /> : <ChevronDown size={16} style={{ color: '#8b6544' }} />}
+                </button>
 
-                {history.length === 0 ? (
-                  <p style={{ textAlign: 'center', color: '#8b6544', fontSize: 14, padding: '12px 0' }}>
-                    אין היסטוריית שכ"ל
-                  </p>
-                ) : (
-                  <>
-                    <div style={{
-                      display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto',
-                      gap: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700,
-                      color: '#8b6544', textAlign: 'center', direction: 'rtl',
-                    }}>
-                      <span style={{ textAlign: 'right' }}>חודש</span>
-                      <span>חיובים</span>
-                      <span>זיכויים</span>
-                      <span>סה"כ חודשי</span>
-                      <span style={{ minWidth: 90, textAlign: 'left' }}>יתרה מצטברת</span>
-                    </div>
-                    {visibleHistory.map((m) => (
-                      <MonthRow
-                        key={m.billingMonth}
-                        studentId={student.id}
-                        billingMonth={m.billingMonth}
-                        charges={m.charges}
-                        credits={m.credits}
-                        monthlyTotal={m.monthlyTotal}
-                        balanceAfterMonth={m.balanceAfterMonth}
-                        currency={m.currency}
-                        onEdit={handleEdit}
-                        onDelete={handleDelete}
-                      />
-                    ))}
-                    {!showAll && hasOlder && (
-                      <button
-                        onClick={() => setShowAll(true)}
-                        style={{
-                          width: '100%', marginTop: 8, padding: '9px 0',
-                          borderRadius: 10, border: '1px dashed rgba(200,134,63,0.5)',
-                          background: 'transparent', color: '#8b6544',
-                          fontWeight: 700, fontSize: 13, cursor: 'pointer',
-                        }}
-                      >
-                        טען היסטוריה קודמת ({history.length - visibleHistory.length} חודשים נוספים)
-                      </button>
-                    )}
-                  </>
+                {showHistory && (
+                  <div>
+                    {historyByYear.map(([year, months]) => {
+                      const isCurrent = year === currentYear;
+                      const isOpen = isCurrent || expandedYears.has(year);
+                      return (
+                        <div key={year} style={{ marginBottom: 10 }}>
+                          {/* Year header */}
+                          <button
+                            onClick={() => !isCurrent && toggleYear(year)}
+                            style={{
+                              width: '100%',
+                              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                              padding: '9px 14px',
+                              borderRadius: isOpen ? '12px 12px 0 0' : 12,
+                              border: `1px solid ${isCurrent ? 'rgba(200,134,63,0.45)' : 'rgba(200,134,63,0.2)'}`,
+                              background: isCurrent
+                                ? 'linear-gradient(180deg,#fdf6e8,#f5e6c8)'
+                                : 'rgba(245,240,232,0.7)',
+                              cursor: isCurrent ? 'default' : 'pointer',
+                              fontFamily: 'inherit',
+                            }}
+                          >
+                            <span style={{
+                              fontSize: 14, fontWeight: 900,
+                              color: isCurrent ? '#5a3420' : '#7a6040',
+                            }}>
+                              {isCurrent ? `${year} — שנה נוכחית` : year}
+                              <span style={{ fontSize: 12, fontWeight: 600, color: '#8b6544', marginRight: 8 }}>
+                                ({months.length} חודשים)
+                              </span>
+                            </span>
+                            {!isCurrent && (
+                              isOpen
+                                ? <ChevronUp size={15} style={{ color: '#8b6544' }} />
+                                : <ChevronDown size={15} style={{ color: '#8b6544' }} />
+                            )}
+                          </button>
+
+                          {/* Months inside year */}
+                          {isOpen && (
+                            <div style={{
+                              border: `1px solid ${isCurrent ? 'rgba(200,134,63,0.35)' : 'rgba(200,134,63,0.18)'}`,
+                              borderTop: 'none',
+                              borderRadius: '0 0 12px 12px',
+                              background: isCurrent ? 'rgba(255,253,248,0.98)' : 'rgba(248,246,242,0.95)',
+                              padding: '8px 8px 4px',
+                            }}>
+                              {/* Column headers */}
+                              <div style={{
+                                display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto',
+                                gap: 8, padding: '4px 14px 8px', fontSize: 11, fontWeight: 700,
+                                color: '#8b6544', textAlign: 'center', direction: 'rtl',
+                                borderBottom: '1px solid rgba(200,134,63,0.15)',
+                                marginBottom: 6,
+                              }}>
+                                <span style={{ textAlign: 'right' }}>חודש</span>
+                                <span>חיובים</span>
+                                <span>זיכויים</span>
+                                <span>סה"כ חודשי</span>
+                                <span style={{ minWidth: 90, textAlign: 'left' }}>יתרה מצטברת</span>
+                              </div>
+                              {months.map((m) => (
+                                <MonthRow
+                                  key={m.billingMonth}
+                                  studentId={student.id}
+                                  billingMonth={m.billingMonth}
+                                  charges={m.charges}
+                                  credits={m.credits}
+                                  monthlyTotal={m.monthlyTotal}
+                                  balanceAfterMonth={m.balanceAfterMonth}
+                                  currency={m.currency}
+                                  onEdit={handleEdit}
+                                  onDelete={handleDelete}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
               </>
             )}

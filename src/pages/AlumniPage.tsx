@@ -2,7 +2,8 @@ import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Users, BookOpen, MapPin, Check, X, Loader2, Pencil, Download } from "lucide-react";
-import * as XLSX from "xlsx";
+import { exportToExcel, todayStr } from "../utils/excelExport";
+import type { ExportColDef } from "../utils/excelExport";
 import { useAlumni } from "../context/AlumniContext";
 import { updateAlumnus } from "../api/alumniApi";
 import type { Alumni } from "../types/student";
@@ -322,26 +323,20 @@ export default function AlumniPage() {
     setCityFilter(""); setBoardingFilter(new Set());
   }
 
-  function exportToExcel() {
-    const cols = ALUMNI_COLUMNS.filter((c) => selectedExportFields.has(c.key));
-    const headers = cols.map((c) => c.label);
-    const rows = displayed.map((a) =>
-      cols.map((c) => {
-        const raw = String((a as unknown as Record<string, unknown>)[c.key] ?? "");
-        // graduatedAt: show formatted date in export
-        if (c.key === "graduatedAt") return fmtDate(raw);
-        return raw;
-      })
+  function handleExportToExcel() {
+    const exportCols: ExportColDef[] = ALUMNI_COLUMNS
+      .filter((c) => selectedExportFields.has(c.key))
+      .map((c) => ({
+        key: c.key,
+        label: c.label,
+        type: c.key === 'graduatedAt' || c.key === 'gregorianDate' ? 'date' : undefined,
+      }));
+    exportToExcel(
+      displayed as unknown as Record<string, unknown>[],
+      exportCols,
+      'בוגרים',
+      `רשימת_בוגרים_${todayStr()}.xlsx`,
     );
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    ws["!cols"] = headers.map((h, i) => ({
-      wch: Math.max(h.length + 2, ...rows.map((r) => String(r[i] || "").length + 2)),
-    }));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "בוגרים");
-    wb.Workbook = { Views: [{ RTL: true }] };
-    const date = new Date().toLocaleDateString("he-IL").replace(/\//g, "-");
-    XLSX.writeFile(wb, `בוגרים_${date}.xlsx`);
     setShowExportModal(false);
   }
 
@@ -429,7 +424,7 @@ export default function AlumniPage() {
                 ))}
               </div>
               <div className="export-modal-footer">
-                <button className="al-export-btn" onClick={exportToExcel} disabled={selectedExportFields.size === 0}>
+                <button className="al-export-btn" onClick={handleExportToExcel} disabled={selectedExportFields.size === 0}>
                   <Download size={15} /> ייצוא ({selectedExportFields.size} שדות)
                 </button>
                 <button className="export-modal-cancel" onClick={() => setShowExportModal(false)}>בטל</button>

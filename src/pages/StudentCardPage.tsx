@@ -9,6 +9,7 @@ import { graduateStudent } from "../api/alumniApi";
 import type { Student } from "../types/student";
 import { useStudentTuition } from "../hooks/useStudentTuition";
 import { TuitionModal } from "../components/tuition/TuitionModal";
+import { formatDate } from "../utils/dateHelpers";
 import "./SearchStudentPage.css";
 
 function fmtDate(val: string | undefined): string {
@@ -49,7 +50,6 @@ const DISPLAY_FIELDS: FieldDef[] = [
   { key: "fatherName",         label: "שם האב" },
   { key: "motherName",         label: "שם האם" },
   { key: "fatherPhone",        label: "טלפון אב",  type: "tel" },
-  { key: "motherPhone",        label: "טלפון אם",  type: "tel" },
   { key: "homePhone",          label: "טלפון בית", type: "tel" },
   { key: "city",               label: "עיר" },
   { key: "street",             label: "רחוב" },
@@ -57,6 +57,7 @@ const DISPLAY_FIELDS: FieldDef[] = [
   { key: "age",                label: "גיל" },
   { key: "community",          label: "קהילה" },
   { key: "paymentStatusNotes", label: "הערה" },
+  { key: "tuitionStartDate",   label: "תחילת גבייה" },
 ];
 
 // 12 data fields + 1 birthdate = 13 fields, rows 14+15 = action buttons
@@ -70,6 +71,10 @@ function renderValue(
   onCopy: (v: string, key: string) => void
 ) {
   const val = student[field.key] as string | undefined;
+
+  if (field.key === "tuitionStartDate") {
+    return <span className="profile-value">{formatDate(val ?? null)}</span>;
+  }
 
   if (field.type === "email" && val) {
     return (

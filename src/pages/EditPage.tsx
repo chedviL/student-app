@@ -19,7 +19,7 @@ type EditSection = "personal" | "contact" | "class" | "payment" | "address" | "n
 interface FieldDef {
   key: keyof Student;
   label: string;
-  type?: "text" | "email" | "tel";
+  type?: "text" | "email" | "tel" | "date";
   span?: boolean; // full-width field
 }
 
@@ -97,6 +97,7 @@ const SECTIONS: {
     fields: [
       { key: "tuition",            label: "שכר לימוד" },
       { key: "tuitionRank",        label: "דרגת שכ\"ל" },
+      { key: "tuitionStartDate",   label: "תאריך תחילת גבייה", type: "date" as const },
       { key: "paymentMethod",      label: "אמצעי תשלום" },
       { key: "dueDateNote",        label: "הערת מועד" },
       { key: "credit",             label: "אשראי" },
@@ -409,7 +410,7 @@ function EditForm({
                     className="edit-input"
                     type={numeric ? "number" : (f.type ?? "text")}
                     step={numeric ? "any" : undefined}
-                    dir={f.type === "tel" || f.type === "email" ? "ltr" : undefined}
+                    dir={f.type === "tel" || f.type === "email" || f.type === "date" ? "ltr" : undefined}
                     value={inputVal}
                     onChange={(e) => change(f.key, e.target.value)}
                     placeholder={
