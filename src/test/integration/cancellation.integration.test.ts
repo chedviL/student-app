@@ -4,8 +4,7 @@
  * Runs against real DB ג€” fixtures created/cleaned automatically.
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { createClient } from '@supabase/supabase-js';
-import { adminClient, anonClient, getAuthClient, cleanupFixtures } from './integrationSetup';
+import { adminClient, anonClient, getAuthClient } from './integrationSetup';
 import { FIXTURES, TEST_BILLING_MONTH } from '../fixtures/fixtures';
 import { assertDestructiveTestsAllowed } from '../guards/destructiveGuard';
 
@@ -47,8 +46,7 @@ async function seedCancelFixtures() {
   await adminClient.from('students').upsert(Object.values(CANCEL_FIXTURES), { onConflict: 'id' });
 }
 
-async function chargeStudent(studentId: string, billingMonth = MONTH) {
-  const { data, error } = await adminClient.rpc('process_monthly_tuition', {
+async function chargeStudent(_studentId: string, billingMonth = MONTH) {  const { data, error } = await adminClient.rpc('process_monthly_tuition', {
     p_billing_month: billingMonth,
   });
   if (error) throw new Error(error.message);
