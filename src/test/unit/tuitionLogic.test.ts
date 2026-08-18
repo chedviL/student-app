@@ -208,13 +208,15 @@ describe('Auto-payment rank rules', () => {
 describe('Backfill cutoff logic', () => {
   function computeCutoff(today: Date): string {
     const day = today.getDate();
+    let year = today.getFullYear();
+    let month = today.getMonth(); // 0-based
     if (day < 21) {
-      const d = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-      return d.toISOString().slice(0, 10);
-    } else {
-      const d = new Date(today.getFullYear(), today.getMonth(), 1);
-      return d.toISOString().slice(0, 10);
+      // previous month
+      if (month === 0) { year -= 1; month = 11; } else { month -= 1; }
     }
+    // first of that month
+    const mm = String(month + 1).padStart(2, '0');
+    return `${year}-${mm}-01`;
   }
 
   it('before 21st → cutoff is previous month', () => {
