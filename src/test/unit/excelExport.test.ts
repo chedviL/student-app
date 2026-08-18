@@ -24,14 +24,14 @@ describe('exportToExcel', () => {
   });
 
   it('sets RTL on workbook', () => {
-    let capturedWb: XLSX.WorkBook | null = null;
+    let capturedWb: XLSX.WorkBook | undefined;
     vi.mocked(XLSX.writeFile).mockImplementationOnce((wb) => { capturedWb = wb as XLSX.WorkBook; });
     exportToExcel([{ name: 'test' }], [{ key: 'name', label: 'שם' }], 'S', 'f.xlsx');
     expect(capturedWb?.Workbook?.Views?.[0]?.RTL).toBe(true);
   });
 
   it('sets autofilter', () => {
-    let capturedWb: XLSX.WorkBook | null = null;
+    let capturedWb: XLSX.WorkBook | undefined;
     vi.mocked(XLSX.writeFile).mockImplementationOnce((wb) => { capturedWb = wb as XLSX.WorkBook; });
     exportToExcel([{ name: 'test' }], [{ key: 'name', label: 'שם' }], 'S', 'f.xlsx');
     const ws = capturedWb?.Sheets?.['S'];
@@ -39,7 +39,7 @@ describe('exportToExcel', () => {
   });
 
   it('sets column widths', () => {
-    let capturedWb: XLSX.WorkBook | null = null;
+    let capturedWb: XLSX.WorkBook | undefined;
     vi.mocked(XLSX.writeFile).mockImplementationOnce((wb) => { capturedWb = wb as XLSX.WorkBook; });
     exportToExcel([{ name: 'test' }], [{ key: 'name', label: 'שם' }], 'S', 'f.xlsx');
     const ws = capturedWb?.Sheets?.['S'];
@@ -48,7 +48,7 @@ describe('exportToExcel', () => {
   });
 
   it('formats date YYYY-MM-DD → DD.MM.YYYY', () => {
-    let capturedWb: XLSX.WorkBook | null = null;
+    let capturedWb: XLSX.WorkBook | undefined;
     vi.mocked(XLSX.writeFile).mockImplementationOnce((wb) => { capturedWb = wb as XLSX.WorkBook; });
     exportToExcel([{ d: '2026-08-01' }], [{ key: 'd', label: 'תאריך', type: 'date' }], 'S', 'f.xlsx');
     const ws = capturedWb?.Sheets?.['S'];
@@ -57,7 +57,7 @@ describe('exportToExcel', () => {
   });
 
   it('formats ILS currency', () => {
-    let capturedWb: XLSX.WorkBook | null = null;
+    let capturedWb: XLSX.WorkBook | undefined;
     vi.mocked(XLSX.writeFile).mockImplementationOnce((wb) => { capturedWb = wb as XLSX.WorkBook; });
     exportToExcel([{ a: '700' }], [{ key: 'a', label: 'סכום', type: 'currency_ils' }], 'S', 'f.xlsx');
     const ws = capturedWb?.Sheets?.['S'];
@@ -65,7 +65,7 @@ describe('exportToExcel', () => {
   });
 
   it('formats USD currency', () => {
-    let capturedWb: XLSX.WorkBook | null = null;
+    let capturedWb: XLSX.WorkBook | undefined;
     vi.mocked(XLSX.writeFile).mockImplementationOnce((wb) => { capturedWb = wb as XLSX.WorkBook; });
     exportToExcel([{ a: '700' }], [{ key: 'a', label: 'סכום', type: 'currency_usd' }], 'S', 'f.xlsx');
     const ws = capturedWb?.Sheets?.['S'];
@@ -83,7 +83,7 @@ describe('exportToExcel', () => {
   });
 
   it('writes correct headers', () => {
-    let capturedWb: XLSX.WorkBook | null = null;
+    let capturedWb: XLSX.WorkBook | undefined;
     vi.mocked(XLSX.writeFile).mockImplementationOnce((wb) => { capturedWb = wb as XLSX.WorkBook; });
     exportToExcel([], [{ key: 'x', label: 'כותרת' }], 'S', 'f.xlsx');
     const ws = capturedWb?.Sheets?.['S'];
