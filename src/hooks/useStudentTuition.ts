@@ -5,7 +5,7 @@ import {
   getMonthTransactions,
   addManualTransaction,
   updateManualTransaction,
-  deleteTransaction,
+  cancelTransaction,
 } from '../api/tuitionApi';
 import type {
   TuitionBalance,
@@ -53,12 +53,12 @@ export function useStudentTuition(studentId: string) {
     await load();
   }, [load]);
 
-  const removeTransaction = useCallback(async (id: string) => {
-    await deleteTransaction(id);
+  const cancelTx = useCallback(async (id: string, reason: string) => {
+    await cancelTransaction(id, reason);
     await load();
   }, [load]);
 
-  return { balance, history, loading, error, refresh: load, addTransaction, editTransaction, removeTransaction };
+  return { balance, history, loading, error, refresh: load, addTransaction, editTransaction, cancelTx };
 }
 
 export function useMonthTransactions(studentId: string, billingMonth: string | null) {

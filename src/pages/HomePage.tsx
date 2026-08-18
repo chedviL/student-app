@@ -1,32 +1,107 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Database, Pencil, GraduationCap, CreditCard } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import "./HomePage.css";
 import logo from "../assets/logo.png";
 
-import slide1 from "../images/044A1227.JPG";
-import slide2 from "../images/044A1230.JPG";
-import slide3 from "../images/044A1231.JPG";
-import slide4 from "../images/044A1236.JPG";
-import slide5 from "../images/044A1249.JPG";
+import slide1 from "../images/optimized/044A1227.webp";
+import slide2 from "../images/optimized/044A1230.webp";
+import slide3 from "../images/optimized/044A1231.webp";
+import slide4 from "../images/optimized/044A1236.webp";
+import slide5 from "../images/optimized/044A1249.webp";
 
 const slides = [slide1, slide2, slide3, slide4, slide5];
+const DISPLAY_DURATION = 5000; // ms to show each slide AFTER it has loaded
+
+/** Preload a single image URL, returns a cleanup function */
+function preloadImage(src: string): () => void {
+  const img = new window.Image();
+  img.src = src;
+  return () => { img.src = ""; };
+}
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const [current, setCurrent] = useState(0);
 
-  useEffect(() => {
-    const t = setInterval(() => setCurrent(i => (i + 1) % slides.length), 5000);
-    return () => clearInterval(t);
+  // index of the slide currently displayed
+  const [current, setCurrent]     = useState(0);
+  // index of the slide that is being faded in (may differ from current during transition)
+  const [next, setNext]           = useState<number | null>(null);
+  // whether the "next" slide's <img> has finished loading
+  const [nextLoaded, setNextLoaded] = useState(false);
+
+  const timerRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef  = useRef(true);
+
+  // Clear any pending timer
+  const clearTimer = useCallback(() => {
+    if (timerRef.current !== null) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
   }, []);
+
+  // After current slide is fully visible, schedule the next transition
+  const scheduleNext = useCallback(() => {
+    clearTimer();
+    timerRef.current = setTimeout(() => {
+      if (!mountedRef.current) return;
+      const nextIdx = (current + 1) % slides.length;
+      setNext(nextIdx);
+      setNextLoaded(false);
+    }, DISPLAY_DURATION);
+  }, [current, clearTimer]);
+
+  // Kick off timer once on mount and whenever current changes
+  useEffect(() => {
+    scheduleNext();
+    return clearTimer;
+  }, [scheduleNext, clearTimer]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  // Preload next image in background after current slide appears
+  useEffect(() => {
+    const nextIdx = (current + 1) % slides.length;
+    const cancel = preloadImage(slides[nextIdx]);
+    return cancel;
+  }, [current]);
+
+  // When the hidden "next" img fires onLoad, mark it loaded
+  const handleNextLoaded = useCallback(() => {
+    if (!mountedRef.current) return;
+    setNextLoaded(true);
+  }, []);
+
+  // Once next image is loaded, perform the actual transition
+  useEffect(() => {
+    if (next === null || !nextLoaded) return;
+    // Swap: next becomes current
+    setCurrent(next);
+    setNext(null);
+    setNextLoaded(false);
+  }, [next, nextLoaded]);
+
+  // Manual dot click – jump immediately
+  const goTo = useCallback((idx: number) => {
+    clearTimer();
+    setNext(null);
+    setNextLoaded(false);
+    setCurrent(idx);
+  }, [clearTimer]);
 
   return (
     <div className="home-page with-navbar">
 
       {/* ── HERO ── */}
       <div className="home-hero">
+
+        {/* Current visible slide */}
         <AnimatePresence>
           <motion.div
             key={current}
@@ -35,9 +110,26 @@ export default function HomePage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 1.2 }}
+            transition={{ duration: 1.0 }}
           />
         </AnimatePresence>
+
+        {/*
+          Hidden img tags used purely for load detection.
+          The first image gets loading="eager" for priority; the rest are lazy.
+        */}
+        {slides.map((src, i) => (
+          <img
+            key={src}
+            src={src}
+            alt=""
+            aria-hidden="true"
+            loading={i === 0 ? "eager" : "lazy"}
+            decoding="async"
+            style={{ display: "none" }}
+            onLoad={i === next ? handleNextLoaded : undefined}
+          />
+        ))}
 
         <div className="home-hero-overlay" />
 
@@ -60,7 +152,8 @@ export default function HomePage() {
             <button
               key={i}
               className={`home-dot${i === current ? " active" : ""}`}
-              onClick={() => setCurrent(i)}
+              onClick={() => goTo(i)}
+              aria-label={`תמונה ${i + 1}`}
             />
           ))}
         </div>

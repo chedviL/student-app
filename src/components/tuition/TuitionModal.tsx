@@ -13,7 +13,7 @@ interface TuitionModalProps {
 }
 
 export function TuitionModal({ student, onClose, onTransactionAdded }: TuitionModalProps) {
-  const { balance, history, loading, error, addTransaction, editTransaction, removeTransaction } = useStudentTuition(student.id);
+  const { balance, history, loading, error, addTransaction, editTransaction, cancelTx } = useStudentTuition(student.id);
   const [showForm, setShowForm] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
@@ -67,8 +67,8 @@ export function TuitionModal({ student, onClose, onTransactionAdded }: TuitionMo
     onTransactionAdded?.();
   }
 
-  async function handleDelete(id: string) {
-    await removeTransaction(id);
+  async function handleCancel(id: string, reason: string) {
+    await cancelTx(id, reason);
     onTransactionAdded?.();
   }
 
@@ -324,8 +324,9 @@ export function TuitionModal({ student, onClose, onTransactionAdded }: TuitionMo
                                   monthlyTotal={m.monthlyTotal}
                                   balanceAfterMonth={m.balanceAfterMonth}
                                   currency={m.currency}
+                                  studentName={`${student.lastName} ${student.firstName}`}
                                   onEdit={handleEdit}
-                                  onDelete={handleDelete}
+                                  onCancel={handleCancel}
                                 />
                               ))}
                             </div>

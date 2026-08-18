@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { Search, Database, Home, Pencil, GraduationCap, CreditCard } from "lucide-react";
+import { Search, Database, Home, Pencil, GraduationCap, CreditCard, LogOut } from "lucide-react";
 import logo from "../../assets/logo.png";
+import { useAuth } from "../../context/AuthContext";
+import { getMyProfile } from "../../api/tuitionApi";
 import "./Navbar.css";
 
 const NAV_ITEMS = [
@@ -15,7 +17,17 @@ const NAV_ITEMS = [
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
+  const [displayName, setDisplayName] = useState('');
   const location = useLocation();
+  const { signOut } = useAuth();
+
+  useEffect(() => {
+    getMyProfile().then((p) => { if (p) setDisplayName(p.displayName); }).catch(() => {});
+  }, []);
+
+  async function handleLogout() {
+    await signOut();
+  }
 
   function isActive(to: string, end: boolean) {
     if (end) return location.pathname === to;
@@ -51,6 +63,23 @@ export default function Navbar() {
             </li>
           ))}
         </ul>
+
+        {/* User info + logout */}
+        <div className="navbar-user">
+          {displayName && (
+            <span className="navbar-username" title={displayName}>
+              {displayName}
+            </span>
+          )}
+          <button
+            className="navbar-logout"
+            onClick={handleLogout}
+            title="התנתקות"
+            aria-label="התנתקות"
+          >
+            <LogOut size={16} />
+          </button>
+        </div>
 
         {/* Mobile hamburger */}
         <button

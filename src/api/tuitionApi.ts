@@ -22,6 +22,10 @@ function mapTransaction(row: Record<string, unknown>): TuitionTransaction {
     source: row.source as TuitionTransaction['source'],
     note: row.note ? String(row.note) : null,
     createdAt: String(row.created_at),
+    createdBy: row.created_by ? String(row.created_by) : null,
+    cancelledAt: row.cancelled_at ? String(row.cancelled_at) : null,
+    cancelledBy: row.cancelled_by ? String(row.cancelled_by) : null,
+    cancellationReason: row.cancellation_reason ? String(row.cancellation_reason) : null,
   };
 }
 
@@ -89,51 +93,52 @@ export async function getMonthTransactions(
   return (data ?? []).map((r) => mapTransaction(r as Record<string, unknown>));
 }
 
-/** Add a manual transaction (payment, charge, or adjustment) */
+/** Add a manual transaction — goes through RPC to set created_by server-side */
 export async function addManualTransaction(tx: NewManualTransaction): Promise<TuitionTransaction> {
-  const { data, error } = await supabase
-    .from('tuition_transactions')
-    .insert({
-      student_id: tx.studentId,
-      billing_month: tx.billingMonth,
-      transaction_date: tx.transactionDate,
-      amount: tx.amount,
-      currency: tx.currency,
-      transaction_type: tx.transactionType,
-      source: 'manual',
-      note: tx.note ?? null,
-    })
-    .select()
-    .single();
+  const { data, error } = await supabase.rpc('add_manual_transaction', {
+    p_student_id:       tx.studentId,
+    p_billing_month:    tx.billingMonth,
+    p_transaction_date: tx.transactionDate,
+    p_amount:           tx.amount,
+    p_currency:         tx.currency,
+    p_transaction_type: tx.transactionType,
+    p_note:             tx.note ?? null,
+  });
 
   if (error) throw new Error(error.message);
   return mapTransaction(data as Record<string, unknown>);
 }
 
-/** Update an existing manual transaction */
+/** Update an existing manual transaction — goes through RPC for validation */
 export async function updateManualTransaction(
   id: string,
   fields: Partial<Pick<NewManualTransaction, 'amount' | 'transactionDate' | 'billingMonth' | 'transactionType' | 'note'>>
 ): Promise<TuitionTransaction> {
-  const patch: Record<string, unknown> = {};
-  if (fields.amount !== undefined)          patch.amount = fields.amount;
-  if (fields.transactionDate !== undefined) patch.transaction_date = fields.transactionDate;
-  if (fields.billingMonth !== undefined)    patch.billing_month = fields.billingMonth;
-  if (fields.transactionType !== undefined) patch.transaction_type = fields.transactionType;
-  if (fields.note !== undefined)            patch.note = fields.note ?? null;
-
-  const { data, error } = await supabase
-    .from('tuition_transactions')
-    .update(patch)
-    .eq('id', id)
-    .select()
-    .single();
+  const { data, error } = await supabase.rpc('update_manual_transaction', {
+    p_transaction_id:   id,
+    p_amount:           fields.amount           ?? null,
+    p_transaction_date: fields.transactionDate  ?? null,
+    p_billing_month:    fields.billingMonth     ?? null,
+    p_transaction_type: fields.transactionType  ?? null,
+    p_note:             fields.note             ?? null,
+  });
 
   if (error) throw new Error(error.message);
   return mapTransaction(data as Record<string, unknown>);
 }
 
-/** Delete a transaction by id */
+/** Cancel a transaction (soft delete) — sets cancelled_at, cancelled_by, reason */
+export async function cancelTransaction(id: string, reason: string): Promise<TuitionTransaction> {
+  const { data, error } = await supabase.rpc('cancel_transaction', {
+    p_transaction_id: id,
+    p_reason:         reason,
+  });
+
+  if (error) throw new Error(error.message);
+  return mapTransaction(data as Record<string, unknown>);
+}
+
+/** @deprecated Use cancelTransaction instead. Kept for test cleanup via service_role only. */
 export async function deleteTransaction(id: string): Promise<void> {
   const { error } = await supabase
     .from('tuition_transactions')
@@ -302,4 +307,49 @@ export async function runMonthlyProcessing(billingMonth?: string): Promise<void>
     p_billing_month: month,
   });
   if (error) throw new Error(error.message);
+}
+
+import type { UserProfile } from '../types/tuition';
+
+/** Resolve display names for a list of user UUIDs (created_by / cancelled_by).
+ *  Uses profiles table — only id + display_name columns are readable. */
+export async function resolveUserProfiles(
+  ids: string[]
+): Promise<Map<string, string>> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  if (unique.length === 0) return new Map();
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, display_name')
+    .in('id', unique);
+
+  if (error) {
+    // Non-fatal — audit display degrades gracefully
+    console.warn('resolveUserProfiles:', error.message);
+    return new Map();
+  }
+
+  const map = new Map<string, string>();
+  for (const row of (data ?? [])) {
+    const r = row as { id: string; display_name: string };
+    map.set(r.id, r.display_name || r.id);
+  }
+  return map;
+}
+
+/** Get current user's own profile */
+export async function getMyProfile(): Promise<UserProfile | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, display_name')
+    .eq('id', user.id)
+    .single();
+
+  if (error || !data) return null;
+  const row = data as { id: string; display_name: string };
+  return { id: row.id, displayName: row.display_name };
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, Plus, Loader2, Pencil, Trash2, Check } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, Loader2, Pencil, Ban, Check } from 'lucide-react';
 import { useStudentTuition, useMonthTransactions } from '../../hooks/useStudentTuition';
+import CancelTransactionModal from './CancelTransactionModal';
 import type { TuitionCurrency, TransactionType, NewManualTransaction, TuitionTransaction } from '../../types/tuition';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -42,7 +43,7 @@ export function firstOfMonth(dateStr: string): string {
 
 export function MonthRow({
   studentId, billingMonth, charges, credits, monthlyTotal, balanceAfterMonth, currency,
-  onEdit, onDelete,
+  studentName, onEdit, onCancel,
 }: {
   studentId: string;
   billingMonth: string;
@@ -51,8 +52,9 @@ export function MonthRow({
   monthlyTotal: number;
   balanceAfterMonth: number;
   currency: TuitionCurrency;
+  studentName?: string;
   onEdit?: (id: string, fields: Partial<Pick<NewManualTransaction, 'amount' | 'transactionDate' | 'billingMonth' | 'transactionType' | 'note'>>) => Promise<void>;
-  onDelete?: (id: string) => Promise<void>;
+  onCancel?: (id: string, reason: string) => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
   const { transactions, loading } = useMonthTransactions(studentId, open ? billingMonth : null);
@@ -92,7 +94,14 @@ export function MonthRow({
             <p style={{ textAlign: 'center', color: '#8b6544', fontSize: 13 }}>אין פעולות</p>
           )}
           {!loading && transactions.map((tx) => (
-            <TransactionRow key={tx.id} tx={tx} currency={currency} onEdit={onEdit} onDelete={onDelete} />
+            <TransactionRow
+              key={tx.id}
+              tx={tx}
+              currency={currency}
+              studentName={studentName}
+              onEdit={onEdit}
+              onCancel={onCancel}
+            />
           ))}
         </div>
       )}
@@ -100,22 +109,28 @@ export function MonthRow({
   );
 }
 
+// ── TransactionRow ────────────────────────────────────────────────────────────
+
 function TransactionRow({
-  tx, currency, onEdit, onDelete,
+  tx, currency, studentName, onEdit, onCancel,
 }: {
   tx: TuitionTransaction;
   currency: TuitionCurrency;
+  studentName?: string;
   onEdit?: (id: string, fields: Partial<Pick<NewManualTransaction, 'amount' | 'transactionDate' | 'billingMonth' | 'transactionType' | 'note'>>) => Promise<void>;
-  onDelete?: (id: string) => Promise<void>;
+  onCancel?: (id: string, reason: string) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [amount, setAmount] = useState(String(tx.amount));
   const [date, setDate] = useState(tx.transactionDate);
   const [type, setType] = useState<TransactionType>(tx.transactionType);
   const [note, setNote] = useState(tx.note ?? '');
   const [err, setErr] = useState('');
+
+  const isCancelled = !!tx.cancelledAt;
+  const isManual = tx.source === 'manual';
 
   const inp: React.CSSProperties = {
     padding: '4px 8px', borderRadius: 8, border: '1.5px solid #c58a46',
@@ -144,14 +159,60 @@ function TransactionRow({
     }
   }
 
-  async function remove() {
-    if (!onDelete) return;
-    setDeleting(true);
-    try { await onDelete(tx.id); }
-    catch (e) { setErr(e instanceof Error ? e.message : 'שגיאה'); setDeleting(false); }
+  async function handleCancel(reason: string) {
+    if (!onCancel) return;
+    await onCancel(tx.id, reason);
   }
 
-  if (editing) {
+  // ── Cancelled display ─────────────────────────────────────────────────────
+
+  if (isCancelled) {
+    return (
+      <div style={{
+        padding: '6px 0', borderBottom: '1px solid rgba(231,212,175,0.4)',
+        direction: 'rtl', opacity: 0.65,
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#5a3420', textDecoration: 'line-through' }}>
+                {txTypeLabel(tx.transactionType)}
+              </span>
+              <span style={{
+                fontSize: 11, fontWeight: 800, color: '#c62828',
+                background: 'rgba(198,40,40,0.1)', border: '1px solid rgba(198,40,40,0.3)',
+                borderRadius: 4, padding: '1px 6px',
+              }}>
+                בוטל
+              </span>
+            </div>
+            <div style={{ fontSize: 12, color: '#8b6544' }}>{fmtDate(tx.transactionDate)}</div>
+            {tx.cancellationReason && (
+              <div style={{ fontSize: 12, color: '#c62828', fontStyle: 'italic', marginTop: 2 }}>
+                סיבה: {tx.cancellationReason}
+              </div>
+            )}
+            {tx.cancelledAt && (
+              <div style={{ fontSize: 11, color: '#aaa' }}>
+                בוטל: {fmtDate(tx.cancelledAt.slice(0, 10))}
+              </div>
+            )}
+          </div>
+          <span style={{
+            fontWeight: 800, fontSize: 15, whiteSpace: 'nowrap',
+            color: tx.amount < 0 ? '#c62828' : '#2e7d32',
+            textDecoration: 'line-through', opacity: 0.7,
+          }}>
+            {fmtAmount(tx.amount, currency)}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Edit mode ─────────────────────────────────────────────────────────────
+
+  if (editing && isManual) {
     return (
       <div style={{ padding: '8px 0', borderBottom: '1px solid rgba(231,212,175,0.4)', direction: 'rtl' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 6 }}>
@@ -171,8 +232,6 @@ function TransactionRow({
               <option value="manual_payment">תשלום ידני</option>
               <option value="manual_charge">חיוב ידני</option>
               <option value="adjustment">התאמה</option>
-              <option value="monthly_charge">חיוב חודשי</option>
-              <option value="automatic_payment">תשלום אוטומטי</option>
             </select>
           </div>
         </div>
@@ -195,33 +254,57 @@ function TransactionRow({
     );
   }
 
+  // ── Normal display ────────────────────────────────────────────────────────
+
   return (
-    <div style={{
-      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      padding: '6px 0', borderBottom: '1px solid rgba(231,212,175,0.4)',
-      direction: 'rtl', gap: 8,
-    }}>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: '#5a3420' }}>{txTypeLabel(tx.transactionType)}</div>
-        <div style={{ fontSize: 12, color: '#8b6544' }}>{fmtDate(tx.transactionDate)}</div>
-        {tx.note && <div style={{ fontSize: 12, color: '#8b6544', fontStyle: 'italic' }}>{tx.note}</div>}
+    <>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '6px 0', borderBottom: '1px solid rgba(231,212,175,0.4)',
+        direction: 'rtl', gap: 8,
+      }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#5a3420' }}>{txTypeLabel(tx.transactionType)}</span>
+            {tx.source === 'automatic' && (
+              <span style={{ fontSize: 10, color: '#8b6544', background: 'rgba(200,134,63,0.12)', border: '1px solid rgba(200,134,63,0.25)', borderRadius: 4, padding: '1px 5px' }}>
+                אוטומטי
+              </span>
+            )}
+          </div>
+          <div style={{ fontSize: 12, color: '#8b6544' }}>{fmtDate(tx.transactionDate)}</div>
+          {tx.note && <div style={{ fontSize: 12, color: '#8b6544', fontStyle: 'italic' }}>{tx.note}</div>}
+        </div>
+        <span style={{ fontWeight: 800, fontSize: 15, color: tx.amount < 0 ? '#c62828' : '#2e7d32', whiteSpace: 'nowrap' }}>
+          {fmtAmount(tx.amount, currency)}
+        </span>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {onEdit && isManual && (
+            <button onClick={() => setEditing(true)} title="ערוך" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8b6544', padding: 4, borderRadius: 6, display: 'flex' }}>
+              <Pencil size={14} />
+            </button>
+          )}
+          {onCancel && (
+            <button
+              onClick={() => setShowCancelModal(true)}
+              title="ביטול פעולה"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c62828', padding: 4, borderRadius: 6, display: 'flex' }}
+            >
+              <Ban size={14} />
+            </button>
+          )}
+        </div>
       </div>
-      <span style={{ fontWeight: 800, fontSize: 15, color: tx.amount < 0 ? '#c62828' : '#2e7d32', whiteSpace: 'nowrap' }}>
-        {fmtAmount(tx.amount, currency)}
-      </span>
-      <div style={{ display: 'flex', gap: 4 }}>
-        {onEdit && (
-          <button onClick={() => setEditing(true)} title="ערוך" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8b6544', padding: 4, borderRadius: 6, display: 'flex' }}>
-            <Pencil size={14} />
-          </button>
-        )}
-        {onDelete && (
-          <button onClick={remove} disabled={deleting} title="מחק" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c62828', padding: 4, borderRadius: 6, display: 'flex' }}>
-            {deleting ? <Loader2 size={14} className="spin" /> : <Trash2 size={14} />}
-          </button>
-        )}
-      </div>
-    </div>
+
+      {showCancelModal && onCancel && (
+        <CancelTransactionModal
+          transaction={tx}
+          studentName={studentName ?? ''}
+          onConfirm={handleCancel}
+          onClose={() => setShowCancelModal(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -247,7 +330,11 @@ export function AddPaymentForm({
     const num = parseFloat(amount);
     if (isNaN(num) || num === 0) { setErr('יש להזין סכום תקין'); return; }
     if (!date) { setErr('יש לבחור תאריך'); return; }
-    const finalAmount = num;
+    // Sign enforcement: manual_charge must be negative, manual_payment positive
+    const finalAmount =
+      type === 'manual_charge' ? -Math.abs(num) :
+      type === 'manual_payment' ? Math.abs(num) :
+      num; // adjustment: user provides sign
     setSaving(true);
     setErr('');
     try {
@@ -282,7 +369,7 @@ export function AddPaymentForm({
           <label style={{ fontSize: 12, fontWeight: 700, color: '#8b6544', display: 'block', marginBottom: 3 }}>
             סכום ({currency === 'ILS' ? '₪' : '$'})
           </label>
-          <input style={inp} type="number" step="0.01" value={amount}
+          <input style={inp} type="number" step="0.01" min="0.01" value={amount}
             onChange={(e) => setAmount(e.target.value)} placeholder="0" dir="ltr" />
         </div>
         <div>
@@ -292,7 +379,7 @@ export function AddPaymentForm({
         <div>
           <label style={{ fontSize: 12, fontWeight: 700, color: '#8b6544', display: 'block', marginBottom: 3 }}>סוג</label>
           <select style={inp} value={type} onChange={(e) => setType(e.target.value as TransactionType)}>
-            <option value="manual_payment">תשלום ידני</option>
+            <option value="manual_payment">תשלום ידני (זיכוי)</option>
             <option value="manual_charge">חיוב ידני</option>
             <option value="adjustment">התאמה</option>
           </select>
@@ -318,8 +405,8 @@ export function AddPaymentForm({
 
 // ── TuitionSection ────────────────────────────────────────────────────────────
 
-export default function TuitionSection({ studentId }: { studentId: string }) {
-  const { balance, history, loading, error, addTransaction, editTransaction, removeTransaction } = useStudentTuition(studentId);
+export default function TuitionSection({ studentId, studentName }: { studentId: string; studentName?: string }) {
+  const { balance, history, loading, error, addTransaction, editTransaction, cancelTx } = useStudentTuition(studentId);
   const [showForm, setShowForm] = useState(false);
 
   if (loading) {
@@ -340,7 +427,6 @@ export default function TuitionSection({ studentId }: { studentId: string }) {
   const bal = balance?.currentBalance ?? 0;
   const isDebt = bal < 0;
 
-  // If currency is not yet set, show a warning instead of the balance
   if (!currency || balance?.status === 'no_currency') {
     return (
       <div style={{ marginTop: 28, direction: 'rtl' }}>
@@ -355,64 +441,37 @@ export default function TuitionSection({ studentId }: { studentId: string }) {
 
   return (
     <div style={{ marginTop: 28, direction: 'rtl' }}>
-      {/* divider */}
       <div style={{ height: 1, background: 'linear-gradient(90deg,transparent,rgba(200,134,63,0.5),transparent)', marginBottom: 20 }} />
 
-      {/* balance header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <div>
           <div style={{ fontSize: 13, fontWeight: 700, color: '#8b6544', marginBottom: 4 }}>יתרת שכ"ל נוכחית</div>
           <div style={{ fontSize: 32, fontWeight: 900, color: isDebt ? '#c62828' : '#2e7d32', direction: 'ltr', unicodeBidi: 'isolate' }}>
             {bal < 0 ? '-' : ''}{Math.abs(bal).toLocaleString('he-IL', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} {sym}
           </div>
-          <span style={{
-            display: 'inline-block', marginTop: 6,
-            padding: '4px 14px', borderRadius: 999,
-            fontSize: 13, fontWeight: 800,
-            background: isDebt ? '#c62828' : '#2e7d32', color: '#fff',
-          }}>
+          <span style={{ display: 'inline-block', marginTop: 6, padding: '4px 14px', borderRadius: 999, fontSize: 13, fontWeight: 800, background: isDebt ? '#c62828' : '#2e7d32', color: '#fff' }}>
             {isDebt ? 'חייב' : 'תקין'}
           </span>
         </div>
-
         <button
           onClick={() => setShowForm((v) => !v)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '8px 16px', borderRadius: 12,
-            border: '1px solid rgba(200,134,63,0.45)',
-            background: 'linear-gradient(180deg,#f5e6c8,#e8c98a)',
-            color: '#5a3420', fontWeight: 800, fontSize: 14, cursor: 'pointer',
-          }}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 12, border: '1px solid rgba(200,134,63,0.45)', background: 'linear-gradient(180deg,#f5e6c8,#e8c98a)', color: '#5a3420', fontWeight: 800, fontSize: 14, cursor: 'pointer' }}
         >
-          <Plus size={15} />
-          הוסף תשלום
+          <Plus size={15} />הוסף תשלום
         </button>
       </div>
 
       {showForm && (
-        <AddPaymentForm
-          studentId={studentId}
-          currency={currency as TuitionCurrency}
-          onAdd={addTransaction}
-          onClose={() => setShowForm(false)}
-        />
+        <AddPaymentForm studentId={studentId} currency={currency as TuitionCurrency} onAdd={addTransaction} onClose={() => setShowForm(false)} />
       )}
 
-      {/* history */}
       {history.length === 0 ? (
         <p style={{ textAlign: 'center', color: '#8b6544', fontSize: 14, padding: '12px 0' }}>אין היסטוריית שכ"ל</p>
       ) : (
         <>
-          <div style={{
-            display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto',
-            gap: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700,
-            color: '#8b6544', textAlign: 'center', direction: 'rtl',
-          }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto', gap: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, color: '#8b6544', textAlign: 'center', direction: 'rtl' }}>
             <span style={{ textAlign: 'right' }}>חודש</span>
-            <span>חיובים</span>
-            <span>זיכויים</span>
-            <span>סה"כ חודשי</span>
+            <span>חיובים</span><span>זיכויים</span><span>סה"כ חודשי</span>
             <span style={{ minWidth: 90, textAlign: 'left' }}>יתרה מצטברת</span>
           </div>
           {history.map((m) => (
@@ -425,8 +484,9 @@ export default function TuitionSection({ studentId }: { studentId: string }) {
               monthlyTotal={m.monthlyTotal}
               balanceAfterMonth={m.balanceAfterMonth}
               currency={m.currency}
+              studentName={studentName}
               onEdit={editTransaction}
-              onDelete={removeTransaction}
+              onCancel={cancelTx}
             />
           ))}
         </>

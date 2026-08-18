@@ -22,6 +22,21 @@ export interface TuitionTransaction {
   source: TransactionSource;
   note: string | null;
   createdAt: string;
+  // Audit fields (added in migration v4)
+  createdBy: string | null;
+  cancelledAt: string | null;
+  cancelledBy: string | null;
+  cancellationReason: string | null;
+}
+
+export interface CancelTransactionRequest {
+  transactionId: string;
+  reason: string;
+}
+
+export interface UserProfile {
+  id: string;
+  displayName: string;
 }
 
 export interface TuitionBalance {
