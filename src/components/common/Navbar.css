@@ -6,101 +6,168 @@
   right: 0;
   left: 0;
   z-index: 1000;
+
   height: 62px;
+
   display: flex;
   align-items: center;
   justify-content: space-between;
+
   padding: 0 28px;
-  background: rgba(30, 14, 5, 0.72);
-  backdrop-filter: blur(18px) saturate(1.6);
-  -webkit-backdrop-filter: blur(18px) saturate(1.6);
+
+  background: rgba(30, 14, 5, 0.82);
+
+  /* lighter than before — improves rendering performance */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+
   border-bottom: 1px solid rgba(247, 214, 152, 0.18);
+
   box-shadow:
-    0 2px 24px rgba(0, 0, 0, 0.32),
+    0 2px 18px rgba(0, 0, 0, 0.28),
     0 1px 0 rgba(247, 214, 152, 0.08);
+
   direction: rtl;
 }
 
-/* ---- Logo / brand ---- */
+
+/* ==========================================
+   Logo / brand
+========================================== */
 
 .navbar-brand {
   display: flex;
   align-items: center;
   gap: 10px;
+
   text-decoration: none;
+
   flex-shrink: 0;
+
+  /* keeps the right side stable */
+  width: 210px;
 }
 
 .navbar-logo {
   width: 38px;
   height: 38px;
+
   object-fit: contain;
-  filter: drop-shadow(0 0 8px rgba(229, 191, 124, 0.5));
+
+  filter: drop-shadow(
+    0 0 8px rgba(229, 191, 124, 0.45)
+  );
+
   transition: transform 0.3s ease;
 }
 
 .navbar-brand:hover .navbar-logo {
-  transform: scale(1.08);
+  transform: scale(1.06);
 }
 
 .navbar-brand-name {
   font-size: 15px;
   font-weight: 800;
+
   color: #f5dfa0;
+
   letter-spacing: 0.03em;
   white-space: nowrap;
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
+
+  text-shadow:
+    0 1px 8px rgba(0, 0, 0, 0.4);
+
   line-height: 1.2;
 }
 
 .navbar-brand-sub {
   display: block;
+
   font-size: 11px;
   font-weight: 600;
+
   color: rgba(240, 210, 150, 0.65);
+
   letter-spacing: 0.05em;
 }
 
-/* ---- Nav links ---- */
+
+/* ==========================================
+   Navigation links
+========================================== */
+
+/*
+  The navigation is positioned independently
+  from the username and logo.
+
+  This is what prevents the buttons from
+  "jumping" when the username finishes loading.
+*/
 
 .navbar-links {
+  position: absolute;
+
+  left: 50%;
+  transform: translateX(-50%);
+
   display: flex;
   align-items: center;
+  justify-content: center;
+
   gap: 4px;
+
   list-style: none;
+
   margin: 0;
   padding: 0;
+
+  white-space: nowrap;
 }
 
 .navbar-link {
   position: relative;
+
   display: flex;
   align-items: center;
+
   gap: 6px;
+
   padding: 7px 14px;
+
   border-radius: 10px;
+
   font-size: 14px;
   font-weight: 700;
+
   color: rgba(255, 240, 200, 0.78);
+
   text-decoration: none;
+
   cursor: pointer;
+
   background: transparent;
   border: none;
+
   transition:
     color 0.2s ease,
     background 0.2s ease;
+
   letter-spacing: 0.02em;
+
   white-space: nowrap;
 }
 
 .navbar-link svg {
   opacity: 0.75;
+
   transition: opacity 0.2s ease;
+
   flex-shrink: 0;
 }
 
 .navbar-link:hover {
   color: #ffe9a8;
+
   background: rgba(255, 215, 120, 0.1);
 }
 
@@ -110,6 +177,7 @@
 
 .navbar-link.active {
   color: #ffd97a;
+
   background: rgba(255, 210, 100, 0.13);
 }
 
@@ -117,33 +185,37 @@
   opacity: 1;
 }
 
-/* golden underline for active */
+
+/* Golden underline for active page */
+
 .navbar-link.active::after {
   content: "";
+
   position: absolute;
+
   bottom: 2px;
   left: 14px;
   right: 14px;
+
   height: 2px;
+
   border-radius: 999px;
-  background: linear-gradient(90deg, transparent, #ffd97a, transparent);
-  box-shadow: 0 0 6px rgba(255, 210, 80, 0.6);
+
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #ffd97a,
+    transparent
+  );
+
+  box-shadow:
+    0 0 6px rgba(255, 210, 80, 0.55);
 }
 
-/* ---- Logout button ---- */
 
-.navbar-logout {
-  color: rgba(255, 240, 200, 0.38) !important;
-  font-size: 13px !important;
-  padding: 7px 10px !important;
-}
-
-.navbar-logout:hover {
-  color: rgba(255, 240, 200, 0.7) !important;
-  background: rgba(255, 255, 255, 0.05) !important;
-}
-
-/* ---- Divider ---- */
+/* ==========================================
+   Optional divider
+========================================== */
 
 .navbar-divider-li {
   display: flex;
@@ -152,27 +224,87 @@
 
 .navbar-divider {
   display: block;
+
   width: 1px;
   height: 22px;
-  background: rgba(247, 214, 152, 0.2);
+
   margin: 0 6px;
+
+  background: rgba(247, 214, 152, 0.2);
+
   flex-shrink: 0;
 }
 
-/* ---- Mobile hamburger ---- */
+
+/* ==========================================
+   Username
+========================================== */
+
+/*
+  Fixed area reserved from the first render.
+
+  Even before display_name arrives from Supabase,
+  this area keeps the same width, so the rest of
+  the navbar never moves.
+*/
+
+.navbar-user {
+  width: 150px;
+  min-width: 150px;
+
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+
+  flex-shrink: 0;
+
+  overflow: hidden;
+}
+
+.navbar-username {
+  display: block;
+
+  width: 100%;
+
+  font-size: 13px;
+  font-weight: 700;
+
+  color: #f5dfa0;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  text-align: left;
+
+  opacity: 0.9;
+}
+
+
+/* ==========================================
+   Mobile hamburger
+========================================== */
 
 .navbar-hamburger {
   display: none;
+
   flex-direction: column;
   justify-content: center;
+
   gap: 5px;
+
   width: 36px;
   height: 36px;
+
   padding: 6px;
+
   background: transparent;
   border: none;
+
   cursor: pointer;
+
   border-radius: 8px;
+
   transition: background 0.2s ease;
 }
 
@@ -182,63 +314,163 @@
 
 .navbar-hamburger span {
   display: block;
+
   height: 2px;
+
   border-radius: 2px;
+
   background: rgba(255, 230, 170, 0.85);
-  transition: transform 0.28s ease, opacity 0.28s ease, width 0.28s ease;
+
+  transition:
+    transform 0.28s ease,
+    opacity 0.28s ease,
+    width 0.28s ease;
 }
 
 .navbar-hamburger span:nth-child(2) {
   width: 70%;
+
   margin-right: auto;
 }
 
 .navbar-hamburger.open span:nth-child(1) {
-  transform: translateY(7px) rotate(45deg);
-}
-.navbar-hamburger.open span:nth-child(2) {
-  opacity: 0;
-  transform: scaleX(0);
-}
-.navbar-hamburger.open span:nth-child(3) {
-  transform: translateY(-7px) rotate(-45deg);
+  transform:
+    translateY(7px)
+    rotate(45deg);
 }
 
-/* ---- Mobile drawer ---- */
+.navbar-hamburger.open span:nth-child(2) {
+  opacity: 0;
+
+  transform: scaleX(0);
+}
+
+.navbar-hamburger.open span:nth-child(3) {
+  transform:
+    translateY(-7px)
+    rotate(-45deg);
+}
+
+
+/* ==========================================
+   Mobile drawer
+========================================== */
 
 .navbar-drawer {
   position: fixed;
+
   top: 62px;
   right: 0;
   left: 0;
+
   z-index: 999;
-  background: rgba(22, 10, 3, 0.96);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(247, 214, 152, 0.15);
+
   padding: 12px 20px 20px;
+
   display: flex;
   flex-direction: column;
+
   gap: 4px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+
+  background: rgba(22, 10, 3, 0.97);
+
+  border-bottom:
+    1px solid rgba(247, 214, 152, 0.15);
+
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.4);
+
   transform-origin: top;
-  animation: drawerOpen 0.22s ease forwards;
+
+  animation:
+    drawerOpen 0.22s ease forwards;
 }
 
 @keyframes drawerOpen {
-  from { opacity: 0; transform: scaleY(0.9); }
-  to   { opacity: 1; transform: scaleY(1); }
+  from {
+    opacity: 0;
+    transform: scaleY(0.94);
+  }
+
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
 }
 
 .navbar-drawer .navbar-link {
-  padding: 12px 16px;
-  border-radius: 12px;
-  font-size: 16px;
-  gap: 10px;
   width: 100%;
+
+  padding: 12px 16px;
+
+  border-radius: 12px;
+
+  font-size: 16px;
+
+  gap: 10px;
+
   justify-content: flex-start;
 }
 
+
+/* ==========================================
+   Page body offset
+========================================== */
+
+.with-navbar {
+  padding-top: 62px;
+}
+
+
+/* ==========================================
+   Tablet
+========================================== */
+
+@media (max-width: 950px) and (min-width: 701px) {
+  .navbar {
+    padding: 0 18px;
+  }
+
+  .navbar-brand {
+    width: 160px;
+  }
+
+  .navbar-brand-name {
+    font-size: 13px;
+  }
+
+  .navbar-user {
+    width: 110px;
+    min-width: 110px;
+  }
+
+  .navbar-username {
+    font-size: 12px;
+  }
+
+  .navbar-link {
+    padding: 7px 9px;
+    gap: 4px;
+
+    font-size: 13px;
+  }
+}
+
+
+/* ==========================================
+   Mobile
+========================================== */
+
 @media (max-width: 700px) {
+  .navbar {
+    padding: 0 16px;
+  }
+
+  /*
+    Desktop links disappear.
+    Therefore absolute positioning is no longer
+    involved on mobile.
+  */
   .navbar-links {
     display: none;
   }
@@ -247,51 +479,43 @@
     display: flex;
   }
 
+  .navbar-brand {
+    width: auto;
+  }
+
   .navbar-brand-name {
     font-size: 13px;
   }
+
+  .navbar-brand-sub {
+    display: none;
+  }
+
+  .navbar-user {
+    width: 100px;
+    min-width: 100px;
+  }
+
+  .navbar-username {
+    font-size: 11px;
+  }
 }
 
-/* ===== Page body offset (so content doesn't hide under navbar) ===== */
 
-.with-navbar {
-  padding-top: 62px;
-}
+/* ==========================================
+   Reduced motion
+========================================== */
 
-/* ── User info + logout ──────────────────────────────────────── */
-.navbar-user {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-right: 8px;
-  flex-shrink: 0;
-}
+@media (prefers-reduced-motion: reduce) {
+  .navbar-logo,
+  .navbar-link,
+  .navbar-link svg,
+  .navbar-hamburger,
+  .navbar-hamburger span {
+    transition: none;
+  }
 
-.navbar-username {
-  font-size: 13px;
-  font-weight: 700;
-  color: #8b6544;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.navbar-logout {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px;
-  border-radius: 8px;
-  border: 1px solid rgba(200, 134, 63, 0.3);
-  background: none;
-  color: #8b6544;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.navbar-logout:hover {
-  background: rgba(198, 40, 40, 0.08);
-  color: #c62828;
-  border-color: rgba(198, 40, 40, 0.3);
+  .navbar-drawer {
+    animation: none;
+  }
 }
