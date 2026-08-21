@@ -6,6 +6,18 @@ import type { TuitionCurrency, TransactionType, NewManualTransaction, TuitionTra
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
+type TuitionTransactionWithAudit = TuitionTransaction & {
+  createdByName?: string;
+  cancelledByName?: string;
+};
+
+function createdByLabel(tx: TuitionTransactionWithAudit): string {
+  if (tx.createdByName) return tx.createdByName;
+  if (tx.source === 'automatic') return 'מערכת אוטומטית';
+  return '—';
+}
+
+
 export function fmtAmount(amount: number, currency: TuitionCurrency) {
   const abs = Math.abs(amount).toLocaleString('he-IL', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
   const sym = currency === 'ILS' ? '₪' : '$';
@@ -114,7 +126,7 @@ export function MonthRow({
 function TransactionRow({
   tx, currency, studentName, onEdit, onCancel,
 }: {
-  tx: TuitionTransaction;
+  tx: TuitionTransactionWithAudit;
   currency: TuitionCurrency;
   studentName?: string;
   onEdit?: (id: string, fields: Partial<Pick<NewManualTransaction, 'amount' | 'transactionDate' | 'billingMonth' | 'transactionType' | 'note'>>) => Promise<void>;
@@ -187,6 +199,14 @@ function TransactionRow({
               </span>
             </div>
             <div style={{ fontSize: 12, color: '#8b6544' }}>{fmtDate(tx.transactionDate)}</div>
+            <div style={{ fontSize: 11, color: '#8b6544', marginTop: 2 }}>
+              הוכנס ע״י: <strong>{createdByLabel(tx)}</strong>
+            </div>
+            {tx.cancelledByName && (
+              <div style={{ fontSize: 11, color: '#8b6544', marginTop: 2 }}>
+                בוטל ע״י: <strong>{tx.cancelledByName}</strong>
+              </div>
+            )}
             {tx.cancellationReason && (
               <div style={{ fontSize: 12, color: '#c62828', fontStyle: 'italic', marginTop: 2 }}>
                 סיבה: {tx.cancellationReason}
@@ -273,6 +293,9 @@ function TransactionRow({
             )}
           </div>
           <div style={{ fontSize: 12, color: '#8b6544' }}>{fmtDate(tx.transactionDate)}</div>
+          <div style={{ fontSize: 11, color: '#8b6544', marginTop: 2 }}>
+            הוכנס ע״י: <strong>{createdByLabel(tx)}</strong>
+          </div>
           {tx.note && <div style={{ fontSize: 12, color: '#8b6544', fontStyle: 'italic' }}>{tx.note}</div>}
         </div>
         <span style={{ fontWeight: 800, fontSize: 15, color: tx.amount < 0 ? '#c62828' : '#2e7d32', whiteSpace: 'nowrap' }}>

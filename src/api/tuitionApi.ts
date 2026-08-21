@@ -6,6 +6,7 @@ import type {
   NewManualTransaction,
   AllBalancesSummary,
   MonthAggregate,
+  UserProfile,
 } from '../types/tuition';
 
 // ── mappers ──────────────────────────────────────────────────────────────────
@@ -80,7 +81,7 @@ export async function getStudentMonthlyHistory(studentId: string): Promise<Tuiti
 export async function getMonthTransactions(
   studentId: string,
   billingMonth: string
-): Promise<TuitionTransaction[]> {
+): Promise<TxWithAuditNames[]> {
   const { data, error } = await supabase
     .from('tuition_transactions')
     .select('*')
@@ -90,11 +91,12 @@ export async function getMonthTransactions(
     .order('created_at', { ascending: true });
 
   if (error) throw new Error(error.message);
-  return (data ?? []).map((r) => mapTransaction(r as Record<string, unknown>));
+  const rows = (data ?? []).map((r) => mapTransaction(r as Record<string, unknown>));
+  return enrichTransactionsWithUserNames(rows);
 }
 
 /** Add a manual transaction — goes through RPC to set created_by server-side */
-export async function addManualTransaction(tx: NewManualTransaction): Promise<TuitionTransaction> {
+export async function addManualTransaction(tx: NewManualTransaction): Promise<TxWithAuditNames> {
   const { data, error } = await supabase.rpc('add_manual_transaction', {
     p_student_id:       tx.studentId,
     p_billing_month:    tx.billingMonth,
@@ -106,14 +108,16 @@ export async function addManualTransaction(tx: NewManualTransaction): Promise<Tu
   });
 
   if (error) throw new Error(error.message);
-  return mapTransaction(data as Record<string, unknown>);
+  const mapped = mapTransaction(data as Record<string, unknown>);
+  const [enriched] = await enrichTransactionsWithUserNames([mapped]);
+  return enriched;
 }
 
 /** Update an existing manual transaction — goes through RPC for validation */
 export async function updateManualTransaction(
   id: string,
   fields: Partial<Pick<NewManualTransaction, 'amount' | 'transactionDate' | 'billingMonth' | 'transactionType' | 'note'>>
-): Promise<TuitionTransaction> {
+): Promise<TxWithAuditNames> {
   const { data, error } = await supabase.rpc('update_manual_transaction', {
     p_transaction_id:   id,
     p_amount:           fields.amount           ?? null,
@@ -124,18 +128,22 @@ export async function updateManualTransaction(
   });
 
   if (error) throw new Error(error.message);
-  return mapTransaction(data as Record<string, unknown>);
+  const mapped = mapTransaction(data as Record<string, unknown>);
+  const [enriched] = await enrichTransactionsWithUserNames([mapped]);
+  return enriched;
 }
 
 /** Cancel a transaction (soft delete) — sets cancelled_at, cancelled_by, reason */
-export async function cancelTransaction(id: string, reason: string): Promise<TuitionTransaction> {
+export async function cancelTransaction(id: string, reason: string): Promise<TxWithAuditNames> {
   const { data, error } = await supabase.rpc('cancel_transaction', {
     p_transaction_id: id,
     p_reason:         reason,
   });
 
   if (error) throw new Error(error.message);
-  return mapTransaction(data as Record<string, unknown>);
+  const mapped = mapTransaction(data as Record<string, unknown>);
+  const [enriched] = await enrichTransactionsWithUserNames([mapped]);
+  return enriched;
 }
 
 /** @deprecated Use cancelTransaction instead. Kept for test cleanup via service_role only. */
@@ -204,7 +212,67 @@ async function resolveNames(
   return result;
 }
 
-export type TxWithPerson = TuitionTransaction & { studentName?: string; isAlumni?: boolean };
+/** Resolve display names for a list of user UUIDs (created_by / cancelled_by).
+ *  Uses profiles table — only id + display_name columns are readable. */
+export async function resolveUserProfiles(
+  ids: string[]
+): Promise<Map<string, string>> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  if (unique.length === 0) return new Map();
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, display_name')
+    .in('id', unique);
+
+  if (error) {
+    // Non-fatal — audit display degrades gracefully
+    console.warn('resolveUserProfiles:', error.message);
+    return new Map();
+  }
+
+  const map = new Map<string, string>();
+  for (const row of (data ?? [])) {
+    const r = row as { id: string; display_name: string };
+    map.set(r.id, r.display_name || r.id);
+  }
+  return map;
+}
+
+
+export type TxWithAuditNames = TuitionTransaction & {
+  createdByName?: string;
+  cancelledByName?: string;
+};
+
+export type TxWithPerson = TxWithAuditNames & {
+  studentName?: string;
+  isAlumni?: boolean;
+};
+
+async function enrichTransactionsWithUserNames(
+  transactions: TuitionTransaction[]
+): Promise<TxWithAuditNames[]> {
+  const userIds = transactions.flatMap((tx) =>
+    [tx.createdBy, tx.cancelledBy].filter((id): id is string => Boolean(id))
+  );
+
+  const profiles = await resolveUserProfiles(userIds);
+
+  return transactions.map((tx) => ({
+    ...tx,
+    createdByName:
+      tx.source === 'automatic'
+        ? 'מערכת אוטומטית'
+        : tx.createdBy
+          ? (profiles.get(tx.createdBy) ?? 'משתמש לא מזוהה')
+          : '—',
+    cancelledByName:
+      tx.cancelledBy
+        ? (profiles.get(tx.cancelledBy) ?? 'משתמש לא מזוהה')
+        : undefined,
+  }));
+}
 
 /** Recent transactions across all students + alumni */
 export async function getRecentTransactions(limit = 20): Promise<TxWithPerson[]> {
@@ -217,8 +285,18 @@ export async function getRecentTransactions(limit = 20): Promise<TxWithPerson[]>
   if (error) throw new Error(error.message);
 
   const rows = (data ?? []).map((r) => mapTransaction(r as Record<string, unknown>));
-  const names = await resolveNames(rows.map((r) => r.studentId));
-  return rows.map((tx) => ({ ...tx, ...names.get(tx.studentId) && { studentName: names.get(tx.studentId)!.name, isAlumni: names.get(tx.studentId)!.isAlumni } }));
+  const [withAuditNames, names] = await Promise.all([
+    enrichTransactionsWithUserNames(rows),
+    resolveNames(rows.map((r) => r.studentId)),
+  ]);
+
+  return withAuditNames.map((tx) => ({
+    ...tx,
+    ...(names.get(tx.studentId) && {
+      studentName: names.get(tx.studentId)!.name,
+      isAlumni: names.get(tx.studentId)!.isAlumni,
+    }),
+  }));
 }
 
 /** All transactions with student/alumni name, optional filters */
@@ -243,8 +321,18 @@ export async function getAllTransactions(opts?: {
   if (error) throw new Error(error.message);
 
   const rows = (data ?? []).map((r) => mapTransaction(r as Record<string, unknown>));
-  const names = await resolveNames(rows.map((r) => r.studentId));
-  return rows.map((tx) => ({ ...tx, ...names.get(tx.studentId) && { studentName: names.get(tx.studentId)!.name, isAlumni: names.get(tx.studentId)!.isAlumni } }));
+  const [withAuditNames, names] = await Promise.all([
+    enrichTransactionsWithUserNames(rows),
+    resolveNames(rows.map((r) => r.studentId)),
+  ]);
+
+  return withAuditNames.map((tx) => ({
+    ...tx,
+    ...(names.get(tx.studentId) && {
+      studentName: names.get(tx.studentId)!.name,
+      isAlumni: names.get(tx.studentId)!.isAlumni,
+    }),
+  }));
 }
 
 /** Month aggregates from tuition_monthly_history grouped by billing_month.
@@ -309,34 +397,6 @@ export async function runMonthlyProcessing(billingMonth?: string): Promise<void>
   if (error) throw new Error(error.message);
 }
 
-import type { UserProfile } from '../types/tuition';
-
-/** Resolve display names for a list of user UUIDs (created_by / cancelled_by).
- *  Uses profiles table — only id + display_name columns are readable. */
-export async function resolveUserProfiles(
-  ids: string[]
-): Promise<Map<string, string>> {
-  const unique = [...new Set(ids.filter(Boolean))];
-  if (unique.length === 0) return new Map();
-
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, display_name')
-    .in('id', unique);
-
-  if (error) {
-    // Non-fatal — audit display degrades gracefully
-    console.warn('resolveUserProfiles:', error.message);
-    return new Map();
-  }
-
-  const map = new Map<string, string>();
-  for (const row of (data ?? [])) {
-    const r = row as { id: string; display_name: string };
-    map.set(r.id, r.display_name || r.id);
-  }
-  return map;
-}
 
 /** Get current user's own profile */
 export async function getMyProfile(): Promise<UserProfile | null> {
