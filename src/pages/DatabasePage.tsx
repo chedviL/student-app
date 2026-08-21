@@ -277,6 +277,7 @@ export default function DatabasePage() {
   const [addSaving, setAddSaving] = useState(false);
   const [addError, setAddError] = useState("");
   const [graduateTarget, setGraduateTarget] = useState<Student | null>(null);
+  const [graduateDate, setGraduateDate] = useState("");
   const [graduating, setGraduating] = useState(false);
   const [graduateError, setGraduateError] = useState("");
   const [graduateSuccess, setGraduateSuccess] = useState("");
@@ -367,13 +368,19 @@ export default function DatabasePage() {
   }
 
   async function handleGraduate(student: Student) {
+    if (!graduateDate) {
+      setGraduateError("יש להזין תאריך עזיבה");
+      return;
+    }
+
     setGraduating(true);
     setGraduateError("");
     try {
-      const alumnus = await graduateStudent(student.id);
+      const alumnus = await graduateStudent(student.id, graduateDate);
       removeLocal(student.id);
       addAlumniLocal(alumnus);
       setGraduateTarget(null);
+      setGraduateDate("");
       setGraduateSuccess(`${student.lastName} ${student.firstName} הועבר לרשימת הבוגרים`);
       setTimeout(() => setGraduateSuccess(""), 3000);
     } catch (err) {
@@ -599,24 +606,48 @@ export default function DatabasePage() {
 
         {/* ── Graduate confirm modal ── */}
         {graduateTarget && (
-          <div className="export-modal-overlay" onClick={() => !graduating && setGraduateTarget(null)}>
+          <div className="export-modal-overlay" onClick={() => { if (!graduating) { setGraduateTarget(null); setGraduateError(""); setGraduateDate(""); } }}>
             <div className="export-modal" style={{ maxWidth: 400, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
               <h3 className="export-modal-title">העברה לבוגרים</h3>
               <p style={{ color: "#5b331a", marginBottom: 16, fontSize: 15 }}>
                 האם להעביר את <strong>{graduateTarget.lastName} {graduateTarget.firstName}</strong> לרשימת הבוגרים?
               </p>
+
+              <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#8b6544", marginBottom: 6, textAlign: "right" }}>
+                תאריך עזיבה
+              </label>
+              <input
+                type="date"
+                value={graduateDate}
+                onChange={(e) => setGraduateDate(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "9px 12px",
+                  borderRadius: 10,
+                  border: "1.5px solid #e7d4af",
+                  background: "#fffdf8",
+                  color: "#3a1e08",
+                  fontSize: 14,
+                  fontFamily: "inherit",
+                  outline: "none",
+                  boxSizing: "border-box",
+                  marginBottom: 16,
+                  direction: "ltr",
+                }}
+              />
+
               {graduateError && <p style={{ color: "#c00", marginBottom: 12, fontSize: 14 }}>{graduateError}</p>}
               <div className="export-modal-footer">
                 <button
                   className="db-add-btn"
                   onClick={() => handleGraduate(graduateTarget)}
-                  disabled={graduating}
-                  style={{ background: "linear-gradient(180deg, #3d3460, #5a4da0)", color: "#e0deff", border: "1px solid rgba(124,111,205,0.4)" }}
+                  disabled={graduating || !graduateDate}
+                  style={{ background: graduating || !graduateDate ? "#e0e0e0" : "linear-gradient(180deg, #3d3460, #5a4da0)", color: graduating || !graduateDate ? "#999" : "#e0deff", border: "1px solid rgba(124,111,205,0.4)", cursor: graduating || !graduateDate ? "not-allowed" : "pointer" }}
                 >
                   {graduating ? <Loader2 size={15} className="spin" /> : <GraduationCap size={15} />}
-                  {graduating ? "מעביר..." : "אשר יציאה"}
+                  {graduating ? "מעביר..." : "אשר עזיבה"}
                 </button>
-                <button className="export-modal-cancel" onClick={() => { setGraduateTarget(null); setGraduateError(""); }}>בטל</button>
+                <button className="export-modal-cancel" onClick={() => { setGraduateTarget(null); setGraduateError(""); setGraduateDate(""); }}>בטל</button>
               </div>
             </div>
           </div>
@@ -652,7 +683,7 @@ export default function DatabasePage() {
                         )}
                       </th>
                     ))}
-                    <th className="db-th-link">יצא</th>
+                    <th className="db-th-link">עזב</th>
                     <th className="db-th-link">כרטיס</th>
                   </tr>
                 </thead>
@@ -677,8 +708,8 @@ export default function DatabasePage() {
                         <td className="db-td-link">
                           <button
                             className="db-graduate-btn"
-                            onClick={() => { setGraduateError(""); setGraduateTarget(student); }}
-                            title="העבר לבוגרים"
+                            onClick={() => { setGraduateError(""); setGraduateDate(""); setGraduateTarget(student); }}
+                            title="עזב — העבר לבוגרים"
                           >
                             <GraduationCap size={14} />
                           </button>

@@ -198,7 +198,7 @@ export default function StudentCardPage() {
 
   async function handleGraduate() {
     if (!student) return;
-    if (!graduateDate) { setGraduateError("יש להזין תאריך יציאה"); return; }
+    if (!graduateDate) { setGraduateError("יש להזין תאריך עזיבה"); return; }
     setGraduating(true);
     setGraduateError("");
     try {
@@ -267,7 +267,7 @@ export default function StudentCardPage() {
               {student.lastName} {student.firstName}
             </p>
 
-            <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#8b6544", marginBottom: 6, textAlign: "right" }}>תאריך יציאה</label>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#8b6544", marginBottom: 6, textAlign: "right" }}>תאריך עזיבה</label>
             <input
               type="date"
               value={graduateDate}
@@ -281,7 +281,7 @@ export default function StudentCardPage() {
               <button onClick={handleGraduate} disabled={graduating || !graduateDate}
                 style={{ background: graduating || !graduateDate ? "#e0e0e0" : "linear-gradient(180deg,#1565c0,#0d47a1)", color: graduating || !graduateDate ? "#999" : "#fff", border: "none", borderRadius: 12, padding: "10px 22px", fontSize: 15, fontWeight: 700, cursor: graduating || !graduateDate ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 8, transition: "background 0.2s" }}>
                 {graduating ? <Loader2 size={16} className="spin" /> : <GraduationCap size={16} />}
-                {graduating ? "מעביר..." : "אשר יציאה"}
+                {graduating ? "מעביר..." : "אשר עזיבה"}
               </button>
               <button onClick={() => { setGraduateConfirm(false); setGraduateError(""); setGraduateDate(""); }}
                 style={{ background: "#f5f5f5", color: "#666", border: "1px solid #d9b980", borderRadius: 12, padding: "10px 22px", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
@@ -464,7 +464,7 @@ export default function StudentCardPage() {
               </button>
             </motion.div>
 
-            {/* כפתור יצא / ריק במצב עריכה */}
+            {/* כפתור עזב / ריק במצב עריכה */}
             <motion.div className="profile-item profile-item-btn" variants={itemVariants}>
               {!editMode ? (
                 <button
@@ -472,7 +472,7 @@ export default function StudentCardPage() {
                   onClick={() => { setGraduateError(""); setGraduateDate(""); setGraduateConfirm(true); }}
                 >
                   <GraduationCap size={16} />
-                  יצא
+                  עזב
                 </button>
               ) : (
                 <span style={{ color: "transparent" }}>—</span>
