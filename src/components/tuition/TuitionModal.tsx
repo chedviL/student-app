@@ -13,9 +13,11 @@ interface TuitionModalProps {
 }
 
 export function TuitionModal({ student, onClose, onTransactionAdded }: TuitionModalProps) {
-  const { balance, history, loading, error, addTransaction, editTransaction, cancelTx } = useStudentTuition(student.id);
+  const { balance, history, loading, error, addTransaction, editTransaction, cancelTx, updateCurrency } = useStudentTuition(student.id);
   const [showForm, setShowForm] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [currencyChanging, setCurrencyChanging] = useState(false);
+  const [currencyError, setCurrencyError] = useState('');
 
   const currentYear = new Date().getFullYear().toString();
 
@@ -60,6 +62,19 @@ export function TuitionModal({ student, onClose, onTransactionAdded }: TuitionMo
     await addTransaction(tx);
     setShowForm(false);
     onTransactionAdded?.();
+  }
+
+  async function handleChangeCurrency(newCurrency: TuitionCurrency) {
+    setCurrencyChanging(true);
+    setCurrencyError('');
+    try {
+      await updateCurrency(newCurrency);
+      onTransactionAdded?.();
+    } catch (e) {
+      setCurrencyError(e instanceof Error ? e.message : 'שגיאה בעדכון מטבע');
+    } finally {
+      setCurrencyChanging(false);
+    }
   }
 
   async function handleEdit(id: string, fields: Partial<Pick<NewManualTransaction, 'amount' | 'transactionDate' | 'billingMonth' | 'transactionType' | 'note'>>) {
@@ -189,7 +204,7 @@ export function TuitionModal({ student, onClose, onTransactionAdded }: TuitionMo
                     <div style={{ fontSize: 38, fontWeight: 900, color: balColor, direction: 'ltr', unicodeBidi: 'isolate', lineHeight: 1.1 }}>
                       {balLabel}
                     </div>
-                    <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                       {currency && balance?.status !== 'no_currency' && (
                         <span style={{
                           padding: '4px 14px', borderRadius: 999,
@@ -199,14 +214,32 @@ export function TuitionModal({ student, onClose, onTransactionAdded }: TuitionMo
                           {isDebt ? 'חייב' : 'תקין'}
                         </span>
                       )}
-                      {currency && (
-                        <span style={{ fontSize: 13, color: '#8b6544', fontWeight: 700 }}>
-                          {currency === 'ILS' ? 'שקל ₪' : 'דולר $'}
-                        </span>
-                      )}
                       {(!currency || balance?.status === 'no_currency') && (
-                        <span style={{ fontSize: 13, color: '#8b6544' }}>⚠️ מטבע לא הוגדר</span>
+                        <span style={{ fontSize: 12, color: '#c07000', fontWeight: 700 }}>⚠️ מטבע לא הוגדר —</span>
                       )}
+                      {/* Currency toggle buttons */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        {currency && <span style={{ fontSize: 12, color: '#8b6544' }}>מטבע:</span>}
+                        {(['ILS', 'USD'] as TuitionCurrency[]).map((c) => (
+                          <button
+                            key={c}
+                            disabled={currencyChanging}
+                            onClick={() => handleChangeCurrency(c)}
+                            style={{
+                              padding: '3px 11px', borderRadius: 999, fontSize: 12, fontWeight: 800,
+                              cursor: currencyChanging ? 'not-allowed' : 'pointer',
+                              border: currency === c ? '2px solid #c8863f' : '1.5px solid rgba(200,134,63,0.4)',
+                              background: currency === c ? 'linear-gradient(180deg,#f5e6c8,#e8c98a)' : 'rgba(245,230,200,0.2)',
+                              color: currency === c ? '#5a3420' : '#8b6544',
+                              transition: 'all 0.15s',
+                            }}
+                          >
+                            {c === 'ILS' ? '₪ שקל' : '$ דולר'}
+                          </button>
+                        ))}
+                        {currencyChanging && <Loader2 size={13} className="spin" style={{ color: '#8b6544' }} />}
+                      </div>
+                      {currencyError && <span style={{ fontSize: 12, color: '#c62828' }}>{currencyError}</span>}
                     </div>
                   </div>
 

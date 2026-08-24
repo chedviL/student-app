@@ -428,9 +428,23 @@ export function AddPaymentForm({
 
 // ── TuitionSection ────────────────────────────────────────────────────────────
 
-export default function TuitionSection({ studentId, studentName }: { studentId: string; studentName?: string }) {
-  const { balance, history, loading, error, addTransaction, editTransaction, cancelTx } = useStudentTuition(studentId);
+export default function TuitionSection({ studentId, studentName, isAlumni = false }: { studentId: string; studentName?: string; isAlumni?: boolean }) {
+  const { balance, history, loading, error, addTransaction, editTransaction, cancelTx, updateCurrency } = useStudentTuition(studentId, isAlumni);
   const [showForm, setShowForm] = useState(false);
+  const [currencyChanging, setCurrencyChanging] = useState(false);
+  const [currencyError, setCurrencyError] = useState('');
+
+  async function handleChangeCurrency(newCurrency: TuitionCurrency) {
+    setCurrencyChanging(true);
+    setCurrencyError('');
+    try {
+      await updateCurrency(newCurrency);
+    } catch (e) {
+      setCurrencyError(e instanceof Error ? e.message : 'שגיאה בעדכון מטבע');
+    } finally {
+      setCurrencyChanging(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -454,10 +468,32 @@ export default function TuitionSection({ studentId, studentName }: { studentId: 
     return (
       <div style={{ marginTop: 28, direction: 'rtl' }}>
         <div style={{ height: 1, background: 'linear-gradient(90deg,transparent,rgba(200,134,63,0.5),transparent)', marginBottom: 20 }} />
-        <p style={{ textAlign: 'center', color: '#8b6544', fontSize: 14, padding: '12px 0',
+        <div style={{ textAlign: 'center', padding: '18px 16px',
           background: 'rgba(255,248,220,0.8)', borderRadius: 10, border: '1px solid #e3bf7f' }}>
-          ⚠️ מטבע שכ"ל לא הוגדר לתלמיד זה. יש להגדיר ILS או USD לפני הפעלת מערכת השכ"ל.
-        </p>
+          <p style={{ color: '#8b6544', fontSize: 14, margin: '0 0 14px' }}>
+            ⚠️ מטבע שכ"ל לא הוגדר — יש לבחור מטבע להפעלת המערכת
+          </p>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+            {(['ILS', 'USD'] as TuitionCurrency[]).map((c) => (
+              <button
+                key={c}
+                disabled={currencyChanging}
+                onClick={() => handleChangeCurrency(c)}
+                style={{
+                  padding: '8px 22px', borderRadius: 10, fontSize: 15, fontWeight: 800,
+                  cursor: currencyChanging ? 'not-allowed' : 'pointer',
+                  border: '1.5px solid rgba(200,134,63,0.5)',
+                  background: 'linear-gradient(180deg,#f5e6c8,#e8c98a)',
+                  color: '#5a3420', display: 'flex', alignItems: 'center', gap: 6,
+                }}
+              >
+                {currencyChanging ? <Loader2 size={14} className="spin" /> : null}
+                {c === 'ILS' ? '₪ שקל' : '$ דולר'}
+              </button>
+            ))}
+          </div>
+          {currencyError && <p style={{ color: '#c62828', fontSize: 13, marginTop: 10 }}>{currencyError}</p>}
+        </div>
       </div>
     );
   }
@@ -472,9 +508,31 @@ export default function TuitionSection({ studentId, studentName }: { studentId: 
           <div style={{ fontSize: 32, fontWeight: 900, color: isDebt ? '#c62828' : '#2e7d32', direction: 'ltr', unicodeBidi: 'isolate' }}>
             {bal < 0 ? '-' : ''}{Math.abs(bal).toLocaleString('he-IL', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} {sym}
           </div>
-          <span style={{ display: 'inline-block', marginTop: 6, padding: '4px 14px', borderRadius: 999, fontSize: 13, fontWeight: 800, background: isDebt ? '#c62828' : '#2e7d32', color: '#fff' }}>
-            {isDebt ? 'חייב' : 'תקין'}
-          </span>
+          <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ display: 'inline-block', padding: '4px 14px', borderRadius: 999, fontSize: 13, fontWeight: 800, background: isDebt ? '#c62828' : '#2e7d32', color: '#fff' }}>
+              {isDebt ? 'חייב' : 'תקין'}
+            </span>
+            <span style={{ fontSize: 12, color: '#8b6544' }}>מטבע:</span>
+            {(['ILS', 'USD'] as TuitionCurrency[]).map((c) => (
+              <button
+                key={c}
+                disabled={currencyChanging}
+                onClick={() => handleChangeCurrency(c)}
+                style={{
+                  padding: '3px 11px', borderRadius: 999, fontSize: 12, fontWeight: 800,
+                  cursor: currencyChanging ? 'not-allowed' : 'pointer',
+                  border: currency === c ? '2px solid #c8863f' : '1.5px solid rgba(200,134,63,0.4)',
+                  background: currency === c ? 'linear-gradient(180deg,#f5e6c8,#e8c98a)' : 'rgba(245,230,200,0.2)',
+                  color: currency === c ? '#5a3420' : '#8b6544',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {c === 'ILS' ? '₪ שקל' : '$ דולר'}
+              </button>
+            ))}
+            {currencyChanging && <Loader2 size={13} className="spin" style={{ color: '#8b6544' }} />}
+            {currencyError && <span style={{ fontSize: 12, color: '#c62828' }}>{currencyError}</span>}
+          </div>
         </div>
         <button
           onClick={() => setShowForm((v) => !v)}

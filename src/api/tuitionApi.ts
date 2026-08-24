@@ -398,6 +398,30 @@ export async function runMonthlyProcessing(billingMonth?: string): Promise<void>
 }
 
 
+/** Update a student's tuition currency (ILS / USD / null to clear) */
+export async function setStudentCurrency(
+  studentId: string,
+  currency: 'ILS' | 'USD' | null
+): Promise<void> {
+  const { error } = await supabase
+    .from('students')
+    .update({ tuition_currency: currency })
+    .eq('id', studentId);
+  if (error) throw new Error(error.message);
+}
+
+/** Update an alumni's tuition currency (ILS / USD / null to clear) */
+export async function setAlumniCurrency(
+  alumniId: string,
+  currency: 'ILS' | 'USD' | null
+): Promise<void> {
+  const { error } = await supabase
+    .from('alumni')
+    .update({ tuition_currency: currency })
+    .eq('id', alumniId);
+  if (error) throw new Error(error.message);
+}
+
 /** Get current user's own profile */
 export async function getMyProfile(): Promise<UserProfile | null> {
   const { data: { user } } = await supabase.auth.getUser();

@@ -6,15 +6,18 @@ import {
   addManualTransaction,
   updateManualTransaction,
   cancelTransaction,
+  setStudentCurrency,
+  setAlumniCurrency,
 } from '../api/tuitionApi';
 import type {
   TuitionBalance,
   TuitionMonthSummary,
   TuitionTransaction,
   NewManualTransaction,
+  TuitionCurrency,
 } from '../types/tuition';
 
-export function useStudentTuition(studentId: string) {
+export function useStudentTuition(studentId: string, isAlumni = false) {
   const [balance, setBalance] = useState<TuitionBalance | null>(null);
   const [history, setHistory] = useState<TuitionMonthSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +61,17 @@ export function useStudentTuition(studentId: string) {
     await load();
   }, [load]);
 
-  return { balance, history, loading, error, refresh: load, addTransaction, editTransaction, cancelTx };
+  const updateCurrency = useCallback(async (currency: TuitionCurrency | null) => {
+    if (!studentId) return;
+    if (isAlumni) {
+      await setAlumniCurrency(studentId, currency);
+    } else {
+      await setStudentCurrency(studentId, currency);
+    }
+    await load();
+  }, [studentId, isAlumni, load]);
+
+  return { balance, history, loading, error, refresh: load, addTransaction, editTransaction, cancelTx, updateCurrency };
 }
 
 export function useMonthTransactions(studentId: string, billingMonth: string | null) {
