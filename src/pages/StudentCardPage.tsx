@@ -48,7 +48,6 @@ type FieldDef = { key: keyof Student; label: string; type?: "text" | "email" | "
 
 const DISPLAY_FIELDS: FieldDef[] = [
   { key: "fatherName",         label: "שם האב" },
-  { key: "motherName",         label: "שם האם" },
   { key: "fatherPhone",        label: "טלפון אב",  type: "tel" },
   { key: "homePhone",          label: "טלפון בית", type: "tel" },
   { key: "city",               label: "עיר" },
@@ -441,6 +440,56 @@ export default function StudentCardPage() {
                   {!student.hebrewDate && !student.gregorianDate && "-"}
                 </span>
               )}
+            </motion.div>
+
+            {/* מקורות תקציב */}
+            <motion.div className="profile-item" variants={itemVariants}>
+              <span className="profile-label">מקורות תקציב</span>
+              <span className="profile-value" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+
+                {/* חינוך */}
+                {editMode ? (
+                  <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <input
+                      className="profile-edit-input"
+                      value={draft.education ?? ""}
+                      onChange={(e) => setDraft((d) => ({ ...d, education: e.target.value }))}
+                      placeholder="חינוך"
+                      style={{ flex: 1 }}
+                    />
+                  </span>
+                ) : (
+                  <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    {student.education
+                      ? <Check size={13} strokeWidth={3} style={{ color: "#2e7d32", flexShrink: 0 }} />
+                      : <X size={13} strokeWidth={3} style={{ color: "#c62828", flexShrink: 0 }} />
+                    }
+                    <span style={{ color: student.education ? "#2e7d32" : "#c62828", fontWeight: student.education ? 700 : 400 }}>חינוך</span>
+                  </span>
+                )}
+
+                {/* דתות */}
+                {editMode ? (
+                  <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <input
+                      className="profile-edit-input"
+                      value={draft.religion ?? ""}
+                      onChange={(e) => setDraft((d) => ({ ...d, religion: e.target.value }))}
+                      placeholder="דתות"
+                      style={{ flex: 1 }}
+                    />
+                  </span>
+                ) : (
+                  <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    {student.religion
+                      ? <Check size={13} strokeWidth={3} style={{ color: "#2e7d32", flexShrink: 0 }} />
+                      : <X size={13} strokeWidth={3} style={{ color: "#c62828", flexShrink: 0 }} />
+                    }
+                    <span style={{ color: student.religion ? "#2e7d32" : "#c62828", fontWeight: student.religion ? 700 : 400 }}>דתות</span>
+                  </span>
+                )}
+
+              </span>
             </motion.div>
 
             {/* כפתור חזרה */}

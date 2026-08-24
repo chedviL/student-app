@@ -104,18 +104,18 @@ export default function PaymentsTransactions({ students }: { students: Student[]
       {error && <p style={{ color: '#c62828', textAlign: 'center' }}>{error}</p>}
 
       {!loading && !error && (
-        <div style={{ overflowX: 'auto' }}>
+        <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 'calc(100vh - 380px)' }}>
           <div style={{ fontSize: 12, color: '#8b6544', marginBottom: 8 }}>{displayed.length} תנועות</div>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
-              <tr style={{ color: '#8b6544', fontWeight: 700, borderBottom: '2px solid rgba(231,212,175,0.9)', background: 'rgba(255,253,248,0.8)' }}>
-                <th style={{ padding: '8px 10px', textAlign: 'right' }}>תאריך</th>
-                <th style={{ padding: '8px 10px', textAlign: 'right' }}>חודש חיוב</th>
-                <th style={{ padding: '8px 10px', textAlign: 'right' }}>תלמיד</th>
-                <th style={{ padding: '8px 10px', textAlign: 'right' }}>סוג</th>
-                <th style={{ padding: '8px 10px', textAlign: 'left' }}>סכום</th>
-                <th style={{ padding: '8px 10px', textAlign: 'right' }}>מקור</th>
-                <th style={{ padding: '8px 10px', textAlign: 'right' }}>הערה</th>
+              <tr style={{ color: '#8b6544', fontWeight: 700, borderBottom: '2px solid rgba(231,212,175,0.9)' }}>
+                <th style={{ padding: '8px 10px', textAlign: 'right', position: 'sticky', top: 0, background: 'rgba(255,253,248,0.97)', zIndex: 2 }}>תאריך</th>
+                <th style={{ padding: '8px 10px', textAlign: 'right', position: 'sticky', top: 0, background: 'rgba(255,253,248,0.97)', zIndex: 2 }}>חודש חיוב</th>
+                <th style={{ padding: '8px 10px', textAlign: 'right', position: 'sticky', top: 0, background: 'rgba(255,253,248,0.97)', zIndex: 2 }}>תלמיד</th>
+                <th style={{ padding: '8px 10px', textAlign: 'right', position: 'sticky', top: 0, background: 'rgba(255,253,248,0.97)', zIndex: 2 }}>סוג</th>
+                <th style={{ padding: '8px 10px', textAlign: 'left',  position: 'sticky', top: 0, background: 'rgba(255,253,248,0.97)', zIndex: 2 }}>סכום</th>
+                <th style={{ padding: '8px 10px', textAlign: 'right', position: 'sticky', top: 0, background: 'rgba(255,253,248,0.97)', zIndex: 2 }}>מקור</th>
+                <th style={{ padding: '8px 10px', textAlign: 'right', position: 'sticky', top: 0, background: 'rgba(255,253,248,0.97)', zIndex: 2 }}>הערה</th>
               </tr>
             </thead>
             <tbody>

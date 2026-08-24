@@ -128,29 +128,29 @@ export default function PaymentsStudentsTable({
         </button>
       </div>
 
-      <div style={{ overflowX: 'auto' }}>
+      <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 'calc(100vh - 340px)' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
-            <tr style={{ color: '#8b6544', fontWeight: 700, borderBottom: '2px solid rgba(231,212,175,0.9)', background: 'rgba(255,253,248,0.8)' }}>
+            <tr style={{ color: '#8b6544', fontWeight: 700, borderBottom: '2px solid rgba(231,212,175,0.9)', background: 'rgba(255,253,248,0.97)' }}>
               <th
-                style={{ padding: '8px 12px', textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}
+                style={{ padding: '8px 12px', textAlign: 'right', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, background: 'rgba(255,253,248,0.97)', zIndex: 2 }}
                 onClick={() => toggleSort('name')}
               >
                 שם {sortKey === 'name' ? (sortAsc ? '↑' : '↓') : ''}
               </th>
-              <th style={{ padding: '8px 12px', textAlign: 'right' }}>ת"ז / דרכון</th>
-              <th style={{ padding: '8px 12px', textAlign: 'right' }}>שיעור</th>
-              <th style={{ padding: '8px 12px', textAlign: 'right' }}>שם האב</th>
-              <th style={{ padding: '8px 12px', textAlign: 'right' }}>שכ"ל חודשי</th>
-              <th style={{ padding: '8px 12px', textAlign: 'right' }}>מטבע</th>
-              <th style={{ padding: '8px 12px', textAlign: 'right' }}>דירוג</th>
+              <th style={{ padding: '8px 12px', textAlign: 'right', position: 'sticky', top: 0, background: 'rgba(255,253,248,0.97)', zIndex: 2 }}>ת"ז / דרכון</th>
+              <th style={{ padding: '8px 12px', textAlign: 'right', position: 'sticky', top: 0, background: 'rgba(255,253,248,0.97)', zIndex: 2 }}>שיעור</th>
+              <th style={{ padding: '8px 12px', textAlign: 'right', position: 'sticky', top: 0, background: 'rgba(255,253,248,0.97)', zIndex: 2 }}>שם האב</th>
+              <th style={{ padding: '8px 12px', textAlign: 'right', position: 'sticky', top: 0, background: 'rgba(255,253,248,0.97)', zIndex: 2 }}>שכ"ל חודשי</th>
+              <th style={{ padding: '8px 12px', textAlign: 'right', position: 'sticky', top: 0, background: 'rgba(255,253,248,0.97)', zIndex: 2 }}>מטבע</th>
+              <th style={{ padding: '8px 12px', textAlign: 'right', position: 'sticky', top: 0, background: 'rgba(255,253,248,0.97)', zIndex: 2 }}>דירוג</th>
               <th
-                style={{ padding: '8px 12px', textAlign: 'left', cursor: 'pointer', userSelect: 'none' }}
+                style={{ padding: '8px 12px', textAlign: 'left', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, background: 'rgba(255,253,248,0.97)', zIndex: 2 }}
                 onClick={() => toggleSort('balance')}
               >
                 יתרה {sortKey === 'balance' ? (sortAsc ? '↑' : '↓') : ''}
               </th>
-              <th style={{ padding: '8px 12px', textAlign: 'center' }}>סטטוס</th>
+              <th style={{ padding: '8px 12px', textAlign: 'center', position: 'sticky', top: 0, background: 'rgba(255,253,248,0.97)', zIndex: 2 }}>סטטוס</th>
             </tr>
           </thead>
           <tbody>
