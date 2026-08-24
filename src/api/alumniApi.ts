@@ -32,7 +32,7 @@ function mapRow(row: Record<string, unknown>): Alumni {
     fax: s(row.fax),
     tuition: s(row.tuition),
     tuitionRank: s(row.tuition_rank),
-    tuitionCurrency: null,
+    tuitionCurrency: row.tuition_currency ? String(row.tuition_currency) as "ILS" | "USD" : null,
     siblings: s(row.siblings),
     tuitionStartDate:
       row.tuition_start_date != null ? String(row.tuition_start_date) : null,
@@ -82,6 +82,7 @@ function mapToRow(alumni: Partial<Alumni>): Record<string, unknown> {
   put("fax", alumni.fax);
   put("tuition", alumni.tuition);
   put("tuition_rank", alumni.tuitionRank);
+  put("tuition_currency", alumni.tuitionCurrency);
   put("siblings", alumni.siblings);
   put("tuition_start_date", alumni.tuitionStartDate);
   put("due_date_note", alumni.dueDateNote);

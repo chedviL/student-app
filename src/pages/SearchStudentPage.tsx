@@ -165,7 +165,7 @@ export default function SearchStudentPage() {
               <motion.article
                 className="student-row-card clickable-student-row"
                 key={student.passportOrId || index}
-                onClick={() => navigate(`/student/${student.passportOrId}`)}
+                onClick={() => navigate(`/student/${student.passportOrId || student.id}`)}
                 variants={itemVariants}
               >
                 <div className="student-row-main">

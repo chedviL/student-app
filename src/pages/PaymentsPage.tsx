@@ -13,8 +13,8 @@ import PaymentsMonths from '../components/payments/PaymentsMonths';
 type Tab = 'overview' | 'students' | 'transactions' | 'months';
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: 'overview', label: 'סקירה' },
   { key: 'students', label: 'תלמידים' },
+  { key: 'overview', label: 'סקירה' },
   { key: 'transactions', label: 'תנועות' },
   { key: 'months', label: 'חודשים' },
 ];
@@ -22,7 +22,7 @@ const TABS: { key: Tab; label: string }[] = [
 export default function PaymentsPage() {
   const navigate = useNavigate();
   const { students } = useStudents();
-  const [tab, setTab] = useState<Tab>('overview');
+  const [tab, setTab] = useState<Tab>('students');
   const [balances, setBalances] = useState<TuitionBalance[]>([]);
 
   const loadBalances = useCallback(async () => {

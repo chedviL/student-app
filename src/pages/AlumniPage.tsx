@@ -23,7 +23,6 @@ type ColDef = {
 const ALUMNI_COLUMNS: ColDef[] = [
   { key: "lastName",           label: "משפחה",              width: 110, editable: true },
   { key: "firstName",          label: "שם",                 width: 90,  editable: true },
-  { key: "className",          label: "שיעור",              width: 80,  editable: true },
   { key: "passportOrId",       label: 'ת"ז',                width: 110, dir: "ltr" },
   { key: "age",                label: "גיל",                width: 56,  editable: true },
   { key: "community",          label: "קהילה",              width: 100, editable: true },
