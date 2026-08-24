@@ -21,18 +21,23 @@ type ColDef = {
 };
 
 const ALUMNI_COLUMNS: ColDef[] = [
-  { key: "lastName",           label: "משפחה",        width: 110, editable: true },
-  { key: "firstName",          label: "שם",            width: 90,  editable: true },
-  { key: "className",          label: "שיעור",         width: 80,  editable: true },
-  { key: "passportOrId",       label: 'ת"ז',           width: 110, dir: "ltr" },
-  { key: "age",                label: "גיל",           width: 56,  editable: true },
-  { key: "community",          label: "קהילה",         width: 100, editable: true },
-  { key: "fatherName",         label: "שם האב",        width: 110, editable: true },
-  { key: "fatherPhone",        label: "טל׳ אב",        width: 110, dir: "ltr", editable: true },
-  { key: "motherPhone",        label: "טל׳ אם",        width: 110, dir: "ltr", editable: true },
-  { key: "alumniPhone",        label: "טל׳ בוגר",      width: 110, dir: "ltr" as const, editable: true },
-  { key: "city",               label: "עיר",           width: 90,  editable: true },
-  { key: "graduatedAt",        label: "תאריך יציאה",   width: 120, editable: false },
+  { key: "lastName",           label: "משפחה",              width: 110, editable: true },
+  { key: "firstName",          label: "שם",                 width: 90,  editable: true },
+  { key: "className",          label: "שיעור",              width: 80,  editable: true },
+  { key: "passportOrId",       label: 'ת"ז',                width: 110, dir: "ltr" },
+  { key: "age",                label: "גיל",                width: 56,  editable: true },
+  { key: "community",          label: "קהילה",              width: 100, editable: true },
+  { key: "fatherName",         label: "שם האב",             width: 110, editable: true },
+  { key: "fatherPhone",        label: "טל׳ אב",             width: 110, dir: "ltr", editable: true },
+  { key: "motherPhone",        label: "טל׳ אם",             width: 110, dir: "ltr", editable: true },
+  { key: "alumniPhone",        label: "טל׳ בוגר",           width: 110, dir: "ltr" as const, editable: true },
+  { key: "city",               label: "עיר",                width: 90,  editable: true },
+  { key: "tuition",            label: 'שכ"ל',               width: 80,  editable: true },
+  { key: "tuitionRank",        label: "דרגה",               width: 90,  editable: true },
+  { key: "paymentStatusNotes", label: 'מצב שכ"ל',           width: 110, editable: true },
+  { key: "paymentMethod",      label: "אמצעי תשלום",        width: 110, editable: true },
+  { key: "tuitionStartDate",   label: "תחילת שכ״ל",         width: 110, editable: false },
+  { key: "graduatedAt",        label: "תאריך יציאה",        width: 120, editable: false },
 ];
 
 // ─── Format date DD.MM.YYYY ───────────────────────────────────────────────────
@@ -253,6 +258,8 @@ export default function AlumniPage() {
   const [communityFilter, setCommunityFilter] = useState<Set<string>>(new Set());
   const [cityFilter, setCityFilter] = useState("");
   const [boardingFilter, setBoardingFilter] = useState<Set<string>>(new Set());
+  const [tuitionStatusFilter, setTuitionStatusFilter] = useState<Set<string>>(new Set());
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<Set<string>>(new Set());
   const [showExportModal, setShowExportModal] = useState(false);
   const [selectedExportFields, setSelectedExportFields] = useState<Set<string>>(
     new Set(ALUMNI_COLUMNS.map((c) => c.key))
@@ -269,12 +276,14 @@ export default function AlumniPage() {
   // ── filter + search + sort ──
   const displayed = useMemo(() => {
     let list = localAlumni;
-    if (lastNameFilter)       list = list.filter((a) => (a.lastName  || "").includes(lastNameFilter));
-    if (firstNameFilter)      list = list.filter((a) => (a.firstName || "").includes(firstNameFilter));
-    if (classFilter.size)     list = list.filter((a) => classFilter.has(a.className || ""));
-    if (communityFilter.size) list = list.filter((a) => communityFilter.has(a.community || ""));
-    if (cityFilter)           list = list.filter((a) => (a.city || "").includes(cityFilter));
-    if (boardingFilter.size)  list = list.filter((a) => boardingFilter.has(a.boarding || ""));
+    if (lastNameFilter)           list = list.filter((a) => (a.lastName  || "").includes(lastNameFilter));
+    if (firstNameFilter)          list = list.filter((a) => (a.firstName || "").includes(firstNameFilter));
+    if (classFilter.size)         list = list.filter((a) => classFilter.has(a.className || ""));
+    if (communityFilter.size)     list = list.filter((a) => communityFilter.has(a.community || ""));
+    if (cityFilter)               list = list.filter((a) => (a.city || "").includes(cityFilter));
+    if (boardingFilter.size)      list = list.filter((a) => boardingFilter.has(a.boarding || ""));
+    if (tuitionStatusFilter.size) list = list.filter((a) => tuitionStatusFilter.has(a.paymentStatusNotes || ""));
+    if (paymentMethodFilter.size) list = list.filter((a) => paymentMethodFilter.has(a.paymentMethod || ""));
     if (query.trim().length >= 1) {
       const q = query.trim().toLowerCase();
       list = list.filter(
@@ -292,7 +301,7 @@ export default function AlumniPage() {
       return cc !== 0 ? cc : cmp(a.lastName || "", b.lastName || "");
     });
     return list;
-  }, [localAlumni, query, lastNameFilter, firstNameFilter, classFilter, communityFilter, cityFilter, boardingFilter, sortBy]);
+  }, [localAlumni, query, lastNameFilter, firstNameFilter, classFilter, communityFilter, cityFilter, boardingFilter, tuitionStatusFilter, paymentMethodFilter, sortBy]);
 
   // ── stats ──
   const stats = useMemo(() => {
@@ -302,12 +311,14 @@ export default function AlumniPage() {
     return { total, classes: classes.size, communities: communities.size };
   }, [localAlumni]);
 
-  const lastNameOptions  = useMemo(() => [...new Set(localAlumni.map((a) => a.lastName ).filter(Boolean))].sort((a, b) => a.localeCompare(b, "he")), [localAlumni]);
-  const firstNameOptions = useMemo(() => [...new Set(localAlumni.map((a) => a.firstName).filter(Boolean))].sort((a, b) => a.localeCompare(b, "he")), [localAlumni]);
-  const classOptions     = useMemo(() => [...new Set(localAlumni.map((a) => a.className).filter(Boolean))].sort((a, b) => a.localeCompare(b, "he")), [localAlumni]);
-  const communityOptions = useMemo(() => [...new Set(localAlumni.map((a) => a.community).filter(Boolean))].sort((a, b) => a.localeCompare(b, "he")), [localAlumni]);
-  const cityOptions      = useMemo(() => [...new Set(localAlumni.map((a) => a.city     ).filter(Boolean))].sort((a, b) => a.localeCompare(b, "he")), [localAlumni]);
-  const boardingOptions  = useMemo(() => [...new Set(localAlumni.map((a) => a.boarding ).filter(Boolean))].sort((a, b) => a.localeCompare(b, "he")), [localAlumni]);
+  const lastNameOptions     = useMemo(() => [...new Set(localAlumni.map((a) => a.lastName ).filter(Boolean))].sort((a, b) => a.localeCompare(b, "he")), [localAlumni]);
+  const firstNameOptions    = useMemo(() => [...new Set(localAlumni.map((a) => a.firstName).filter(Boolean))].sort((a, b) => a.localeCompare(b, "he")), [localAlumni]);
+  const classOptions        = useMemo(() => [...new Set(localAlumni.map((a) => a.className).filter(Boolean))].sort((a, b) => a.localeCompare(b, "he")), [localAlumni]);
+  const communityOptions    = useMemo(() => [...new Set(localAlumni.map((a) => a.community).filter(Boolean))].sort((a, b) => a.localeCompare(b, "he")), [localAlumni]);
+  const cityOptions         = useMemo(() => [...new Set(localAlumni.map((a) => a.city     ).filter(Boolean))].sort((a, b) => a.localeCompare(b, "he")), [localAlumni]);
+  const boardingOptions     = useMemo(() => [...new Set(localAlumni.map((a) => a.boarding ).filter(Boolean))].sort((a, b) => a.localeCompare(b, "he")), [localAlumni]);
+  const tuitionStatusOptions = useMemo(() => [...new Set(localAlumni.map((a) => a.paymentStatusNotes).filter(Boolean))].sort((a, b) => a.localeCompare(b, "he")), [localAlumni]);
+  const paymentMethodOptions = useMemo(() => [...new Set(localAlumni.map((a) => a.paymentMethod    ).filter(Boolean))].sort((a, b) => a.localeCompare(b, "he")), [localAlumni]);
 
   function toggleSet(set: Set<string>, setFn: (s: Set<string>) => void, val: string) {
     const next = new Set(set); next.has(val) ? next.delete(val) : next.add(val); setFn(next);
@@ -315,12 +326,14 @@ export default function AlumniPage() {
 
   const activeFilters =
     [lastNameFilter, firstNameFilter, cityFilter].filter(Boolean).length +
-    classFilter.size + communityFilter.size + boardingFilter.size;
+    classFilter.size + communityFilter.size + boardingFilter.size +
+    tuitionStatusFilter.size + paymentMethodFilter.size;
 
   function resetFilters() {
     setQuery(""); setLastNameFilter(""); setFirstNameFilter("");
     setClassFilter(new Set()); setCommunityFilter(new Set());
     setCityFilter(""); setBoardingFilter(new Set());
+    setTuitionStatusFilter(new Set()); setPaymentMethodFilter(new Set());
   }
 
   function handleExportToExcel() {
@@ -461,6 +474,12 @@ export default function AlumniPage() {
                         ) : col.key === "boarding" ? (
                           <FilterDropdown label="פנימייה" options={boardingOptions} selected={boardingFilter}
                             onChange={(v) => toggleSet(boardingFilter, setBoardingFilter, v)} onClear={() => setBoardingFilter(new Set())} />
+                        ) : col.key === "paymentStatusNotes" ? (
+                          <FilterDropdown label='מצב שכ"ל' options={tuitionStatusOptions} selected={tuitionStatusFilter}
+                            onChange={(v) => toggleSet(tuitionStatusFilter, setTuitionStatusFilter, v)} onClear={() => setTuitionStatusFilter(new Set())} />
+                        ) : col.key === "paymentMethod" ? (
+                          <FilterDropdown label="אמצעי תשלום" options={paymentMethodOptions} selected={paymentMethodFilter}
+                            onChange={(v) => toggleSet(paymentMethodFilter, setPaymentMethodFilter, v)} onClear={() => setPaymentMethodFilter(new Set())} />
                         ) : (
                           col.label
                         )}
