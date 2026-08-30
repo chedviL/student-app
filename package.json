@@ -15,7 +15,9 @@
     "test:coverage": "vitest run --config vitest.config.ts --coverage",
     "test:all": "node scripts/testAll.mjs",
     "preview-age-update": "node scripts/preview-age-updates.mjs",
-    "execute-age-update": "node scripts/execute-age-update.mjs"
+    "execute-age-update": "node scripts/execute-age-update.mjs",
+    "preview-age-recovery": "node scripts/recover-ages-from-dates.mjs",
+    "execute-age-recovery": "node scripts/execute-age-recovery.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.2",
