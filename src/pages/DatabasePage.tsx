@@ -662,6 +662,7 @@ export default function DatabasePage() {
                 <thead>
                   <tr>
                     <th className="db-th-row-num">#</th>
+                    <th className="db-th-link">כרטיס</th>
                     {COLUMNS.map((col) => (
                       <th key={col.key} style={{ minWidth: col.width, overflow: "visible" }}>
                         {col.key === "lastName" ? (
@@ -684,7 +685,6 @@ export default function DatabasePage() {
                         )}
                       </th>
                     ))}
-                    <th className="db-th-link">כרטיס</th>
                     <th className="db-th-link">עזב</th>
                   </tr>
                 </thead>
@@ -697,15 +697,6 @@ export default function DatabasePage() {
                         style={{ animationDelay: `${Math.min(idx, 30) * 25}ms` }}
                       >
                         <td className="db-td-num">{idx + 1}</td>
-                        {COLUMNS.map((col) => (
-                          <td key={col.key} className="db-td">
-                            <EditableCell
-                              student={student}
-                              col={col}
-                              onSaved={handleSaved}
-                            />
-                          </td>
-                        ))}
                         <td className="db-td-link">
                           <button
                             className="db-card-btn"
@@ -715,6 +706,15 @@ export default function DatabasePage() {
                             ←
                           </button>
                         </td>
+                        {COLUMNS.map((col) => (
+                          <td key={col.key} className="db-td">
+                            <EditableCell
+                              student={student}
+                              col={col}
+                              onSaved={handleSaved}
+                            />
+                          </td>
+                        ))}
                         <td className="db-td-link">
                           <button
                             className="db-graduate-btn"
