@@ -684,8 +684,8 @@ export default function DatabasePage() {
                         )}
                       </th>
                     ))}
-                    <th className="db-th-link">עזב</th>
                     <th className="db-th-link">כרטיס</th>
+                    <th className="db-th-link">עזב</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -708,20 +708,20 @@ export default function DatabasePage() {
                         ))}
                         <td className="db-td-link">
                           <button
-                            className="db-graduate-btn"
-                            onClick={() => { setGraduateError(""); setGraduateDate(""); setGraduateTarget(student); }}
-                            title="עזב — העבר לבוגרים"
-                          >
-                            <GraduationCap size={14} />
-                          </button>
-                        </td>
-                        <td className="db-td-link">
-                          <button
                             className="db-card-btn"
                             onClick={() => navigate(`/student/${student.passportOrId || student.id}`)}
                             title="פתח כרטיס"
                           >
                             ←
+                          </button>
+                        </td>
+                        <td className="db-td-link">
+                          <button
+                            className="db-graduate-btn"
+                            onClick={() => { setGraduateError(""); setGraduateDate(""); setGraduateTarget(student); }}
+                            title="עזב — העבר לבוגרים"
+                          >
+                            <GraduationCap size={14} />
                           </button>
                         </td>
                       </tr>
