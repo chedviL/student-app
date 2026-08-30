@@ -33,6 +33,7 @@ const COLUMNS: ColDef[] = [
   { key: "fatherPhone",   label: "טל׳ אב",       width: 110, dir: "ltr", editable: true },
   { key: "motherPhone",   label: "טל׳ אם",       width: 110, dir: "ltr", editable: true },
   { key: "homePhone",     label: "טל׳ בית",      width: 110, dir: "ltr", editable: true },
+  { key: "email",         label: "מייל הורים",   width: 140, dir: "ltr", editable: true },
   { key: "city",          label: "עיר",          width: 90,  editable: true },
   { key: "street",        label: "רחוב",         width: 120, editable: true },
   { key: "tuition",       label: 'שכ"ל',         width: 80,  editable: true },
