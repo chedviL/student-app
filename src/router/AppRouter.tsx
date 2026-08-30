@@ -20,7 +20,7 @@ import { useAuth } from "../context/AuthContext";
 // ⚠️ משנים כאן כדי להציג/להסתיר מסך תחזוקה
 // true = מסך תחזוקה בלבד
 // false = אתר עובד כרגיל
-const MAINTENANCE_MODE = true;
+const MAINTENANCE_MODE = false;
 
 const trans: Transition = { duration: 0.2, ease: "easeInOut" };
 const pageTransition = {
