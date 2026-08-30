@@ -13,8 +13,14 @@ import TuitionPage from "../pages/TuitionPage";
 import PaymentsPage from "../pages/PaymentsPage";
 import LoginPage from "../pages/LoginPage";
 import SetPasswordPage from "../pages/SetPasswordPage";
+import MaintenancePage from "../pages/MaintenancePage";
 import ProtectedRoute from "./ProtectedRoute";
 import { useAuth } from "../context/AuthContext";
+
+// ⚠️ משנים כאן כדי להציג/להסתיר מסך תחזוקה
+// true = מסך תחזוקה בלבד
+// false = אתר עובד כרגיל
+const MAINTENANCE_MODE = false;
 
 const trans: Transition = { duration: 0.2, ease: "easeInOut" };
 const pageTransition = {
@@ -124,6 +130,12 @@ function AnimatedRoutes() {
 }
 
 export default function AppRouter() {
+  // אם במצב תחזוקה — הצג רק מסך תחזוקה
+  if (MAINTENANCE_MODE) {
+    return <MaintenancePage />;
+  }
+
+  // אחרת — אתר עובד כרגיל
   return (
     <BrowserRouter>
       <ScrollToTop />
