@@ -13,7 +13,9 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:e2e": "playwright test",
     "test:coverage": "vitest run --config vitest.config.ts --coverage",
-    "test:all": "node scripts/testAll.mjs"
+    "test:all": "node scripts/testAll.mjs",
+    "preview-age-update": "node scripts/preview-age-updates.mjs",
+    "execute-age-update": "node scripts/execute-age-update.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.2",
