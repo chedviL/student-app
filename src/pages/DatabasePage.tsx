@@ -348,13 +348,28 @@ export default function DatabasePage() {
     if (cityFilter)           list = list.filter((s) => (s.city || "").includes(cityFilter));
     if (boardingFilter.size)  list = list.filter((s) => boardingFilter.has(s.boarding || ""));
     if (query.trim().length >= 1) {
-      const q = query.trim().toLowerCase();
-      list = list.filter(
-        (s) =>
-          (s.lastName || "").toLowerCase().includes(q) ||
-          (s.firstName || "").toLowerCase().includes(q) ||
-          (s.passportOrId || "").includes(q)
-      );
+      // פצל לפי רווחים, הסר ריקים — כל מילה חייבת להיות תת-מחרוזת באחד מהשדות
+      const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      const fullName = (s: Student) =>
+        `${s.firstName || ""} ${s.lastName || ""}`.toLowerCase();
+      const fullNameRev = (s: Student) =>
+        `${s.lastName || ""} ${s.firstName || ""}`.toLowerCase();
+      list = list.filter((s) => {
+        const fn   = (s.firstName    || "").toLowerCase();
+        const ln   = (s.lastName     || "").toLowerCase();
+        const id   = (s.passportOrId || "").toLowerCase();
+        const full = fullName(s);
+        const fullR = fullNameRev(s);
+        // כל מילה חייבת להופיע לפחות בשדה אחד
+        return words.every(
+          (w) =>
+            fn.includes(w) ||
+            ln.includes(w) ||
+            id.includes(w) ||
+            full.includes(w) ||
+            fullR.includes(w)
+        );
+      });
     }
     const cmp = (a: string, b: string) => a.localeCompare(b, "he", { sensitivity: "base" });
     list = [...list].sort((a, b) => {
