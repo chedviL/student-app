@@ -138,3 +138,9 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vercel
+
+# Local AI backups
+ai-backup-*/
+ai-location-backup-*/
+ai-ui-backup-*/
+*.backup-location-*

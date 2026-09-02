@@ -14,19 +14,17 @@ import PaymentsPage from "../pages/PaymentsPage";
 import LoginPage from "../pages/LoginPage";
 import SetPasswordPage from "../pages/SetPasswordPage";
 import MaintenancePage from "../pages/MaintenancePage";
+import AIAssistantPage from "../pages/AIAssistantPage";
 import ProtectedRoute from "./ProtectedRoute";
 import { useAuth } from "../context/AuthContext";
 
-// ⚠️ משנים כאן כדי להציג/להסתיר מסך תחזוקה
-// true = מסך תחזוקה בלבד
-// false = אתר עובד כרגיל
 const MAINTENANCE_MODE = false;
 
 const trans: Transition = { duration: 0.2, ease: "easeInOut" };
 const pageTransition = {
-  initial:    { opacity: 0 },
-  animate:    { opacity: 1 },
-  exit:       { opacity: 0 },
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 },
   transition: trans,
 };
 
@@ -42,11 +40,8 @@ function AnimatedRoutes() {
   const location = useLocation();
   const { session, loading } = useAuth();
 
-  // לא מציג כלום עד שנבדק ה-session
   if (loading) return null;
 
-  // משתמש שהגיע דרך invite link — Supabase מגדיר session עם סוג SIGNED_IN
-  // ה-hash מכיל type=invite — מפנים למסך הגדרת סיסמה
   const hash = window.location.hash;
   if (session && hash.includes('type=invite')) {
     return <SetPasswordPage />;
@@ -55,26 +50,9 @@ function AnimatedRoutes() {
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
+        <Route path="/login" element={session ? <Navigate to="/" replace /> : <LoginPage />} />
+        <Route path="/set-password" element={session ? <SetPasswordPage /> : <Navigate to="/login" replace />} />
 
-        {/* ── Public ── */}
-        <Route
-          path="/login"
-          element={
-            session
-              ? <Navigate to="/" replace />
-              : <LoginPage />
-          }
-        />
-        <Route
-          path="/set-password"
-          element={
-            session
-              ? <SetPasswordPage />
-              : <Navigate to="/login" replace />
-          }
-        />
-
-        {/* ── Protected ── */}
         <Route path="/" element={
           <ProtectedRoute>
             <motion.div {...pageTransition}><Navbar /><HomePage /></motion.div>
@@ -120,22 +98,23 @@ function AnimatedRoutes() {
             <motion.div {...pageTransition}><Navbar /><PaymentsPage /></motion.div>
           </ProtectedRoute>
         } />
+        <Route path="/ai" element={
+          <ProtectedRoute>
+            <motion.div {...pageTransition}><Navbar /><AIAssistantPage /></motion.div>
+          </ProtectedRoute>
+        } />
 
-        {/* fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
-
       </Routes>
     </AnimatePresence>
   );
 }
 
 export default function AppRouter() {
-  // אם במצב תחזוקה — הצג רק מסך תחזוקה
   if (MAINTENANCE_MODE) {
     return <MaintenancePage />;
   }
 
-  // אחרת — אתר עובד כרגיל
   return (
     <BrowserRouter>
       <ScrollToTop />
