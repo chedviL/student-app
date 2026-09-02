@@ -32,7 +32,7 @@ const ALUMNI_COLUMNS: ColDef[] = [
   { key: "alumniPhone",        label: "טל׳ בוגר",           width: 110, dir: "ltr" as const, editable: true },
   { key: "city",               label: "עיר",                width: 90,  editable: true },
   { key: "tuition",            label: 'שכ"ל',               width: 80,  editable: true },
-  { key: "tuitionRank",        label: "דרגה",               width: 90,  editable: true },
+  { key: "tuitionRank",        label: "אמצעי",               width: 90,  editable: true },
   { key: "paymentStatusNotes", label: 'מצב שכ"ל',           width: 110, editable: true },
   { key: "paymentMethod",      label: "אמצעי תשלום",        width: 110, editable: true },
   { key: "tuitionStartDate",   label: "תחילת שכ״ל",         width: 110, editable: false },

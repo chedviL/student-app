@@ -1,8 +1,10 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Plus, Loader2, ChevronDown, ChevronUp, Check, Pencil } from 'lucide-react';
 import { useStudentTuition } from '../../hooks/useStudentTuition';
 import { MonthRow, AddPaymentForm, fmtAmount } from './TuitionSection';
+import { updateStudent } from '../../api/studentsApi';
+import { useStudents } from '../../context/StudentsContext';
 import type { TuitionCurrency, NewManualTransaction, TuitionMonthSummary } from '../../types/tuition';
 import type { Student } from '../../types/student';
 
@@ -14,10 +16,32 @@ interface TuitionModalProps {
 
 export function TuitionModal({ student, onClose, onTransactionAdded }: TuitionModalProps) {
   const { balance, history, loading, error, addTransaction, editTransaction, cancelTx, updateCurrency } = useStudentTuition(student.id);
+  const { updateLocal } = useStudents();
   const [showForm, setShowForm] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [currencyChanging, setCurrencyChanging] = useState(false);
   const [currencyError, setCurrencyError] = useState('');
+
+  // ── Static fields edit ──
+  const [editingStatic, setEditingStatic] = useState(false);
+  const [staticDraft, setStaticDraft] = useState({ tuition: student.tuition ?? '', tuitionRank: student.tuitionRank ?? '' });
+  const [staticSaving, setStaticSaving] = useState(false);
+  const [staticError, setStaticError] = useState('');
+
+  async function saveStatic() {
+    setStaticSaving(true);
+    setStaticError('');
+    try {
+      const saved = await updateStudent(student.id, { tuition: staticDraft.tuition, tuitionRank: staticDraft.tuitionRank });
+      updateLocal(saved);
+      onTransactionAdded?.();
+      setEditingStatic(false);
+    } catch (e) {
+      setStaticError(e instanceof Error ? e.message : 'שגיאה בשמירה');
+    } finally {
+      setStaticSaving(false);
+    }
+  }
 
   const currentYear = new Date().getFullYear().toString();
 
@@ -170,30 +194,87 @@ export function TuitionModal({ student, onClose, onTransactionAdded }: TuitionMo
               <p style={{ color: '#c62828', fontSize: 14, textAlign: 'center' }}>{error}</p>
             ) : (
               <>
-                  {(student.tuitionRank || student.tuition) && (
                   <div style={{
-                    display: 'inline-flex', gap: 12, marginBottom: 16,
-                    padding: '8px 14px', background: 'rgba(245,230,200,0.4)',
+                    display: 'flex', gap: 12, marginBottom: 16,
+                    padding: '10px 14px', background: 'rgba(245,230,200,0.4)',
                     borderRadius: 12, border: '1px solid rgba(200,134,63,0.2)', direction: 'rtl',
-                    flexWrap: 'wrap',
+                    flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between',
                   }}>
-                    {student.tuitionRank && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: '#8b6544' }}>דרוג שכ"ל</span>
-                        <span style={{ fontSize: 16, fontWeight: 900, color: '#5a3420' }}>{student.tuitionRank}</span>
-                      </div>
-                    )}
-                    {student.tuitionRank && student.tuition && (
-                      <div style={{ width: 1, background: 'rgba(200,134,63,0.3)', alignSelf: 'stretch' }} />
-                    )}
-                    {student.tuition && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', flex: 1 }}>
+                      {/* שכ"ל */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                         <span style={{ fontSize: 11, fontWeight: 700, color: '#8b6544' }}>שכ"ל חודשי</span>
-                        <span style={{ fontSize: 16, fontWeight: 900, color: '#5a3420', direction: 'ltr', unicodeBidi: 'isolate' }}>{student.tuition}</span>
+                        {editingStatic ? (
+                          <input
+                            value={staticDraft.tuition}
+                            onChange={(e) => setStaticDraft((d) => ({ ...d, tuition: e.target.value }))}
+                            style={{ padding: '3px 8px', borderRadius: 8, border: '1.5px solid #c58a46', background: '#fffef9', color: '#4c2415', fontSize: 15, fontWeight: 800, fontFamily: 'inherit', outline: 'none', width: 90 }}
+                            dir="ltr"
+                          />
+                        ) : (
+                          <span style={{ fontSize: 16, fontWeight: 900, color: '#5a3420', direction: 'ltr', unicodeBidi: 'isolate' }}>
+                            {student.tuition || '—'}
+                          </span>
+                        )}
                       </div>
-                    )}
+
+                      {(student.tuitionRank || editingStatic) && (
+                        <div style={{ width: 1, background: 'rgba(200,134,63,0.3)', alignSelf: 'stretch' }} />
+                      )}
+
+                      {/* אמצעי (tuitionRank) */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#8b6544' }}>אמצעי</span>
+                        {editingStatic ? (
+                          <select
+                            value={staticDraft.tuitionRank}
+                            onChange={(e) => setStaticDraft((d) => ({ ...d, tuitionRank: e.target.value }))}
+                            style={{ padding: '3px 8px', borderRadius: 8, border: '1.5px solid #c58a46', background: '#fffef9', color: '#4c2415', fontSize: 15, fontWeight: 800, fontFamily: 'inherit', outline: 'none' }}
+                          >
+                            <option value="">—</option>
+                            <option value="שלילי">שלילי</option>
+                            <option value="מזומן">מזומן</option>
+                            <option value="כן">כן</option>
+                          </select>
+                        ) : (
+                          <span style={{ fontSize: 16, fontWeight: 900, color: '#5a3420' }}>
+                            {student.tuitionRank || '—'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Edit / Save / Cancel buttons */}
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      {editingStatic ? (
+                        <>
+                          {staticError && <span style={{ fontSize: 12, color: '#c62828' }}>{staticError}</span>}
+                          <button
+                            onClick={saveStatic}
+                            disabled={staticSaving}
+                            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 12px', borderRadius: 8, border: '1px solid rgba(46,125,50,0.4)', background: 'linear-gradient(180deg,#e8f5e9,#81c784)', color: '#1b5e20', fontWeight: 800, cursor: 'pointer', fontSize: 13 }}
+                          >
+                            {staticSaving ? <Loader2 size={13} className="spin" /> : <Check size={13} />}
+                            שמור
+                          </button>
+                          <button
+                            onClick={() => { setEditingStatic(false); setStaticDraft({ tuition: student.tuition ?? '', tuitionRank: student.tuitionRank ?? '' }); setStaticError(''); }}
+                            style={{ padding: '4px 10px', borderRadius: 8, border: '1px solid #d9b980', background: '#f5f5f5', color: '#666', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}
+                          >
+                            בטל
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => { setStaticDraft({ tuition: student.tuition ?? '', tuitionRank: student.tuitionRank ?? '' }); setEditingStatic(true); }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8b6544', padding: 4, borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}
+                          title={'ערוך שכ"ל ואמצעי'}
+                        >
+                          <Pencil size={14} /> עריכה
+                        </button>
+                      )}
+                    </div>
                   </div>
-                )}
 
                 <div style={{
                   display: 'flex', alignItems: 'flex-start',

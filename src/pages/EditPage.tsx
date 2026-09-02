@@ -91,12 +91,12 @@ const SECTIONS: {
   {
     id: "payment",
     label: "שכר לימוד ותשלומים",
-    desc: "שכ\"ל, דרגה, אמצעי תשלום",
+    desc: "שכ\"ל, אמצעי, אמצעי תשלום",
     iconName: "CreditCard",
     iconClass: "icon-payment",
     fields: [
       { key: "tuition",            label: "שכר לימוד" },
-      { key: "tuitionRank",        label: "דרגת שכ\"ל" },
+      { key: "tuitionRank",        label: "אמצעי" },
       { key: "tuitionStartDate",   label: "תאריך תחילת גבייה", type: "date" as const },
       { key: "paymentMethod",      label: "אמצעי תשלום" },
       { key: "dueDateNote",        label: "הערת מועד" },

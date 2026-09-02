@@ -1,9 +1,11 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Plus, Pencil, Check, X, Loader2 } from 'lucide-react';
 import type { Student } from '../../types/student';
 import type { TuitionBalance } from '../../types/tuition';
 import ManualPaymentModal from './ManualPaymentModal';
+import { updateStudent } from '../../api/studentsApi';
+import { useStudents } from '../../context/StudentsContext';
 
 type SortKey = 'name' | 'balance';
 type FilterStatus = 'all' | 'debt' | 'ok' | 'attention';
@@ -28,6 +30,7 @@ export default function PaymentsStudentsTable({
   onRefreshNeeded?: () => void;
 }) {
   const navigate = useNavigate();
+  const { updateLocal } = useStudents();
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [filterCurrency, setFilterCurrency] = useState('');
@@ -35,6 +38,40 @@ export default function PaymentsStudentsTable({
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortAsc, setSortAsc] = useState(true);
   const [showModal, setShowModal] = useState(false);
+
+  // ── Row-level edit state ──
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<{ tuition: string; tuitionRank: string }>({ tuition: '', tuitionRank: '' });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState('');
+
+  function startEdit(s: Student, e: React.MouseEvent) {
+    e.stopPropagation();
+    setEditingId(s.id);
+    setEditDraft({ tuition: s.tuition ?? '', tuitionRank: s.tuitionRank ?? '' });
+    setEditError('');
+  }
+
+  function cancelEdit(e: React.MouseEvent) {
+    e.stopPropagation();
+    setEditingId(null);
+    setEditError('');
+  }
+
+  async function saveEdit(studentId: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    setEditSaving(true);
+    setEditError('');
+    try {
+      const saved = await updateStudent(studentId, { tuition: editDraft.tuition, tuitionRank: editDraft.tuitionRank });
+      updateLocal(saved);
+      setEditingId(null);
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'שגיאה בשמירה');
+    } finally {
+      setEditSaving(false);
+    }
+  }
 
   const balanceMap = useMemo(() => {
     const m = new Map<string, TuitionBalance>();
@@ -132,6 +169,7 @@ export default function PaymentsStudentsTable({
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ color: '#8b6544', fontWeight: 700, borderBottom: '2px solid rgba(231,212,175,0.9)', background: 'rgba(255,253,248,0.97)' }}>
+              <th style={{ padding: '8px 6px', textAlign: 'center', position: 'sticky', top: 0, background: 'rgba(255,253,248,0.97)', zIndex: 2, width: 36 }}></th>
               <th
                 style={{ padding: '8px 12px', textAlign: 'right', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, background: 'rgba(255,253,248,0.97)', zIndex: 2 }}
                 onClick={() => toggleSort('name')}
@@ -143,7 +181,7 @@ export default function PaymentsStudentsTable({
               <th style={{ padding: '8px 12px', textAlign: 'right', position: 'sticky', top: 0, background: 'rgba(255,253,248,0.97)', zIndex: 2 }}>שם האב</th>
               <th style={{ padding: '8px 12px', textAlign: 'right', position: 'sticky', top: 0, background: 'rgba(255,253,248,0.97)', zIndex: 2 }}>שכ"ל חודשי</th>
               <th style={{ padding: '8px 12px', textAlign: 'right', position: 'sticky', top: 0, background: 'rgba(255,253,248,0.97)', zIndex: 2 }}>מטבע</th>
-              <th style={{ padding: '8px 12px', textAlign: 'right', position: 'sticky', top: 0, background: 'rgba(255,253,248,0.97)', zIndex: 2 }}>דירוג</th>
+              <th style={{ padding: '8px 12px', textAlign: 'right', position: 'sticky', top: 0, background: 'rgba(255,253,248,0.97)', zIndex: 2 }}>אמצעי</th>
               <th
                 style={{ padding: '8px 12px', textAlign: 'left', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, background: 'rgba(255,253,248,0.97)', zIndex: 2 }}
                 onClick={() => toggleSort('balance')}
@@ -155,31 +193,107 @@ export default function PaymentsStudentsTable({
           </thead>
           <tbody>
             {filtered.length === 0 && (
-              <tr><td colSpan={9} style={{ textAlign: 'center', padding: 24, color: '#8b6544' }}>לא נמצאו תלמידים</td></tr>
+              <tr><td colSpan={10} style={{ textAlign: 'center', padding: 24, color: '#8b6544' }}>לא נמצאו תלמידים</td></tr>
             )}
             {filtered.map((s) => {
               const bal = balanceMap.get(s.id);
               const sym = s.tuitionCurrency === 'USD' ? '$' : '₪';
               const balVal = bal?.currentBalance;
+              const isEditing = editingId === s.id;
+              const cellInp: React.CSSProperties = {
+                padding: '3px 7px', borderRadius: 7, border: '1.5px solid #c58a46',
+                background: '#fffef9', color: '#4c2415', fontSize: 13, fontWeight: 700,
+                fontFamily: 'inherit', outline: 'none', width: '100%',
+              };
               return (
                 <tr
                   key={s.id}
-                  onClick={() => navigate(`/student/${s.passportOrId || s.id}/tuition`)}
-                  style={{ borderBottom: '1px solid rgba(231,212,175,0.35)', cursor: 'pointer', transition: 'background 0.15s' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,248,230,0.7)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = '')}
+                  onClick={() => !isEditing && navigate(`/student/${s.passportOrId || s.id}/tuition`)}
+                  style={{
+                    borderBottom: '1px solid rgba(231,212,175,0.35)',
+                    cursor: isEditing ? 'default' : 'pointer',
+                    transition: 'background 0.15s',
+                    background: isEditing ? 'rgba(255,248,220,0.85)' : undefined,
+                  }}
+                  onMouseEnter={(e) => { if (!isEditing) e.currentTarget.style.background = 'rgba(255,248,230,0.7)'; }}
+                  onMouseLeave={(e) => { if (!isEditing) e.currentTarget.style.background = ''; }}
                 >
+                  {/* Edit button / Save+Cancel */}
+                  <td style={{ padding: '6px', textAlign: 'center', width: 36 }}>
+                    {isEditing ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'center' }}>
+                        {editSaving
+                          ? <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite', color: '#8b6544' }} />
+                          : <>
+                              <button onClick={(e) => saveEdit(s.id, e)} title="שמור"
+                                style={{ width: 22, height: 22, borderRadius: 6, border: 'none', background: '#c8f0c8', color: '#1b5e20', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Check size={12} />
+                              </button>
+                              <button onClick={cancelEdit} title="בטל"
+                                style={{ width: 22, height: 22, borderRadius: 6, border: 'none', background: '#fde0dc', color: '#7f1616', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <X size={12} />
+                              </button>
+                            </>
+                        }
+                      </div>
+                    ) : (
+                      <button onClick={(e) => startEdit(s, e)} title="ערוך"
+                        style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid rgba(200,134,63,0.35)', background: 'rgba(245,230,200,0.5)', color: '#c8863f', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}>
+                        <Pencil size={13} />
+                      </button>
+                    )}
+                  </td>
+
                   <td style={{ padding: '9px 12px', fontWeight: 700, color: '#4c2415' }}>{s.lastName} {s.firstName}</td>
                   <td style={{ padding: '9px 12px', color: '#8b6544' }}>{s.passportOrId || '—'}</td>
                   <td style={{ padding: '9px 12px', color: '#8b6544' }}>{s.className || '—'}</td>
                   <td style={{ padding: '9px 12px', color: '#8b6544' }}>{s.fatherName || '—'}</td>
-                  <td style={{ padding: '9px 12px', color: '#5a3420' }}>{s.tuition ? `${s.tuition} ${sym}` : '—'}</td>
+
+                  {/* שכ"ל — editable */}
+                  <td style={{ padding: '6px 12px', color: '#5a3420' }}>
+                    {isEditing ? (
+                      <input
+                        style={{ ...cellInp, width: 80 }}
+                        value={editDraft.tuition}
+                        onChange={(e) => setEditDraft((d) => ({ ...d, tuition: e.target.value }))}
+                        onClick={(e) => e.stopPropagation()}
+                        dir="ltr"
+                      />
+                    ) : (
+                      s.tuition ? `${s.tuition} ${sym}` : '—'
+                    )}
+                  </td>
+
                   <td style={{ padding: '9px 12px', color: '#5a3420' }}>{s.tuitionCurrency || '—'}</td>
-                  <td style={{ padding: '9px 12px', color: '#8b6544' }}>{s.tuitionRank || '—'}</td>
+
+                  {/* אמצעי (tuitionRank) — editable */}
+                  <td style={{ padding: '6px 12px', color: '#8b6544' }}>
+                    {isEditing ? (
+                      <select
+                        style={{ ...cellInp, width: 90 }}
+                        value={editDraft.tuitionRank}
+                        onChange={(e) => setEditDraft((d) => ({ ...d, tuitionRank: e.target.value }))}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <option value="">—</option>
+                        <option value="שלילי">שלילי</option>
+                        <option value="מזומן">מזומן</option>
+                        <option value="כן">כן</option>
+                      </select>
+                    ) : (
+                      s.tuitionRank || '—'
+                    )}
+                  </td>
+
                   <td style={{ padding: '9px 12px', textAlign: 'left', fontWeight: 800, direction: 'ltr', color: balVal === undefined ? '#8b6544' : balVal < 0 ? '#c62828' : '#2e7d32' }}>
                     {balVal === undefined ? '—' : `${balVal < 0 ? '-' : '+'}${Math.abs(balVal).toLocaleString('he-IL')} ${sym}`}
                   </td>
-                  <td style={{ padding: '9px 12px', textAlign: 'center' }}>{statusBadge(bal, s)}</td>
+                  <td style={{ padding: '9px 12px', textAlign: 'center' }}>
+                    {editError && isEditing
+                      ? <span style={{ fontSize: 11, color: '#c62828' }}>{editError}</span>
+                      : statusBadge(bal, s)
+                    }
+                  </td>
                 </tr>
               );
             })}

@@ -1,7 +1,7 @@
 import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Users, BookOpen, MapPin, Check, X, Loader2, Pencil, Download, UserPlus, GraduationCap } from "lucide-react";
+import { Users, BookOpen, MapPin, Check, X, Loader2, Pencil, Download, UserPlus, GraduationCap, Copy } from "lucide-react";
 import { exportToExcel, todayStr } from "../utils/excelExport";
 import type { ExportColDef } from "../utils/excelExport";
 import { useStudents } from "../context/StudentsContext";
@@ -33,13 +33,13 @@ const COLUMNS: ColDef[] = [
   { key: "fatherPhone",   label: "טל׳ אב",       width: 110, dir: "ltr", editable: true },
   { key: "motherPhone",   label: "טל׳ אם",       width: 110, dir: "ltr", editable: true },
   { key: "homePhone",     label: "טל׳ בית",      width: 110, dir: "ltr", editable: true },
-  { key: "email",         label: "מייל הורים",   width: 140, dir: "ltr", editable: true },
+  { key: "email",         label: "מייל הורים",   width: 150, dir: "ltr", editable: true },
   { key: "city",          label: "עיר",          width: 90,  editable: true },
   { key: "street",        label: "רחוב",         width: 120, editable: true },
   { key: "tuition",       label: 'שכ"ל',         width: 80,  editable: true },
-  { key: "tuitionRank",   label: "דרגה",         width: 70,  editable: true },
-  { key: "paymentMethod", label: "אמצעי",        width: 90,  editable: true },
-  { key: "paymentStatusNotes", label: "הערות",   width: 140, editable: true },
+  { key: "tuitionRank",   label: "אמצעי",        width: 90,  editable: true },
+  // paymentMethod is shown merged inside the הערה cell (not a standalone column)
+  { key: "paymentStatusNotes", label: "הערה",    width: 160, editable: true },
   { key: "boarding",      label: "פנימייה",      width: 80,  editable: true },
   { key: "hebrewDate",    label: "תאריך עברי",   width: 110, editable: true },
   { key: "gregorianDate", label: "תאריך לועזי",  width: 110, editable: true },
@@ -164,45 +164,40 @@ function StatCard({
   );
 }
 
-// ─── Inline editable cell ─────────────────────────────────────────────────────
+// ─── Row cell (read-only or edit, controlled by parent) ──────────────────────
 
-function EditableCell({
+function RowCell({
   student,
   col,
-  onSaved,
+  editing,
+  draft,
+  onDraftChange,
+  emailCopied,
+  onEmailCopy,
 }: {
   student: Student;
   col: ColDef;
-  onSaved: (updated: Student) => void;
+  editing: boolean;
+  draft: Partial<Student>;
+  onDraftChange: (key: keyof Student, value: string) => void;
+  emailCopied: boolean;
+  onEmailCopy: (val: string) => void;
 }) {
-  const { updateLocal } = useStudents();
-  const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(String(student[col.key] ?? ""));
-  const [saving, setSaving] = useState(false);
-
   const original = String(student[col.key] ?? "");
 
-  async function save() {
-    if (value === original) { setEditing(false); return; }
-    setSaving(true);
-    try {
-      const saved = await updateStudent(student.id, { [col.key]: value });
-      updateLocal(saved);
-      onSaved(saved);
-      setEditing(false);
-    } catch {
-      setValue(original);
-      setEditing(false);
-    } finally {
-      setSaving(false);
-    }
+  // ── Edit mode ──
+  if (editing && col.editable) {
+    return (
+      <input
+        className="db-cell-input db-cell-input-row"
+        value={String(draft[col.key] ?? original)}
+        dir={col.dir}
+        onChange={(e) => onDraftChange(col.key, e.target.value)}
+      />
+    );
   }
 
-  function cancel() {
-    setValue(original);
-    setEditing(false);
-  }
-
+  // ── Read-only: non-editable columns ──
   if (!col.editable) {
     return (
       <span dir={col.dir} style={col.dir === "ltr" ? { unicodeBidi: "isolate" } : undefined}>
@@ -211,45 +206,52 @@ function EditableCell({
     );
   }
 
-  if (editing) {
+  // ── Read-only: email — copy on click ──
+  if (col.key === "email") {
+    if (!original) return <span className="db-cell-empty">—</span>;
     return (
-      <div className="db-cell-edit">
-        <input
-          className="db-cell-input"
-          autoFocus
-          value={value}
-          dir={col.dir}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") save();
-            if (e.key === "Escape") cancel();
-          }}
-          disabled={saving}
-        />
-        <div className="db-cell-actions">
-          {saving
-            ? <Loader2 size={13} className="spin" />
-            : <>
-                <button className="db-cell-ok"  onClick={save}><Check size={13} /></button>
-                <button className="db-cell-cancel" onClick={cancel}><X size={13} /></button>
-              </>
-          }
-        </div>
-      </div>
+      <span
+        className="db-cell-email-copy"
+        onClick={() => onEmailCopy(original)}
+        title="לחץ להעתקת המייל"
+        dir="ltr"
+        style={{ unicodeBidi: "isolate" }}
+      >
+        {emailCopied ? (
+          <span className="db-cell-copied"><Check size={11} /> הועתק</span>
+        ) : (
+          <><Copy size={11} className="db-cell-copy-icon" />{original}</>
+        )}
+      </span>
     );
   }
 
+  // ── Read-only: הערה cell — show paymentMethod + paymentStatusNotes merged ──
+  if (col.key === "paymentStatusNotes") {
+    const method = student.paymentMethod || "";
+    const notes  = original;
+    if (!method && !notes) return <span className="db-cell-empty">—</span>;
+    return (
+      <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        {method && <span style={{ fontSize: 12, fontWeight: 700, color: "#5a3420" }}>{method}</span>}
+        {notes  && <span style={{ fontSize: 12, color: "#6b4c2a" }}>{notes}</span>}
+      </span>
+    );
+  }
+
+  // ── Read-only: gregorian date ──
+  if (col.key === "gregorianDate") {
+    return (
+      <span dir={col.dir} style={col.dir === "ltr" ? { unicodeBidi: "isolate" } : undefined}>
+        {fmtDate(original) || <span className="db-cell-empty">—</span>}
+      </span>
+    );
+  }
+
+  // ── Read-only: all other editable fields ──
   return (
-    <span
-      className="db-cell-view"
-      onClick={() => { setValue(original); setEditing(true); }}
-      title="לחץ לעריכה"
-      dir={col.dir}
-    >
-      {col.key === "gregorianDate"
-        ? (fmtDate(original) || <span className="db-cell-empty">—</span>)
-        : (original || <span className="db-cell-empty">—</span>)}
-      <Pencil size={11} className="db-cell-edit-icon" />
+    <span dir={col.dir} style={col.dir === "ltr" ? { unicodeBidi: "isolate" } : undefined}>
+      {original || <span className="db-cell-empty">—</span>}
     </span>
   );
 }
@@ -258,6 +260,7 @@ function EditableCell({
 
 export default function DatabasePage() {
   const { students: raw, loading, error, removeLocal, addLocal } = useStudents();
+  const { updateLocal } = useStudents();
   const { addLocal: addAlumniLocal } = useAlumni();
   const navigate = useNavigate();
 
@@ -283,7 +286,15 @@ export default function DatabasePage() {
   const [graduateError, setGraduateError] = useState("");
   const [graduateSuccess, setGraduateSuccess] = useState("");
 
-  // local copy so inline edits reflect immediately without full re-fetch
+  // ── Row-level edit state ──
+  const [editingRowId, setEditingRowId] = useState<string | null>(null);
+  const [rowDraft, setRowDraft] = useState<Partial<Student>>({});
+  const [rowSaving, setRowSaving] = useState(false);
+
+  // ── Email copy state ──
+  const [copiedEmailId, setCopiedEmailId] = useState<string | null>(null);
+
+  // local copy so row edits reflect immediately without full re-fetch
   const [localStudents, setLocalStudents] = useState<Student[]>([]);
   // sync from context when raw changes (initial load / realtime)
   useMemo(() => setLocalStudents(raw), [raw]);
@@ -291,6 +302,41 @@ export default function DatabasePage() {
   const handleSaved = useCallback((updated: Student) => {
     setLocalStudents((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
   }, []);
+
+  function startEditRow(student: Student) {
+    setEditingRowId(student.id);
+    setRowDraft({ ...student });
+  }
+
+  function cancelEditRow() {
+    setEditingRowId(null);
+    setRowDraft({});
+  }
+
+  async function saveEditRow(studentId: string) {
+    setRowSaving(true);
+    try {
+      const saved = await updateStudent(studentId, rowDraft);
+      updateLocal(saved);
+      handleSaved(saved);
+      setEditingRowId(null);
+      setRowDraft({});
+    } catch {
+      // keep edit open on failure
+    } finally {
+      setRowSaving(false);
+    }
+  }
+
+  function handleDraftChange(key: keyof Student, value: string) {
+    setRowDraft((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function copyEmail(val: string, studentId: string) {
+    navigator.clipboard.writeText(val);
+    setCopiedEmailId(studentId);
+    setTimeout(() => setCopiedEmailId(null), 2000);
+  }
 
   // ── filter + search + sort ──
   const displayed = useMemo(() => {
@@ -572,7 +618,7 @@ export default function DatabasePage() {
                 <div className="db-add-section-title">שכר לימוד</div>
                 {[
                   { key: "tuition",            label: "שכר לימוד" },
-                  { key: "tuitionRank",         label: "דרגה" },
+                  { key: "tuitionRank",         label: "אמצעי" },
                   { key: "paymentMethod",       label: "אמצעי תשלום" },
                   { key: "paymentStatusNotes",  label: "הערות" },
                   { key: "boarding",            label: "פנימייה" },
@@ -662,6 +708,7 @@ export default function DatabasePage() {
                 <thead>
                   <tr>
                     <th className="db-th-row-num">#</th>
+                    <th className="db-th-link">עריכה</th>
                     <th className="db-th-link">כרטיס</th>
                     {COLUMNS.map((col) => (
                       <th key={col.key} style={{ minWidth: col.width, overflow: "visible" }}>
@@ -690,42 +737,70 @@ export default function DatabasePage() {
                 </thead>
                 <tbody>
                   <AnimatePresence>
-                    {displayed.map((student, idx) => (
-                      <tr
-                        key={student.id}
-                        className="db-row"
-                        style={{ animationDelay: `${Math.min(idx, 30) * 25}ms` }}
-                      >
-                        <td className="db-td-num">{idx + 1}</td>
-                        <td className="db-td-link">
-                          <button
-                            className="db-card-btn"
-                            onClick={() => navigate(`/student/${student.passportOrId || student.id}`)}
-                            title="פתח כרטיס"
-                          >
-                            ←
-                          </button>
-                        </td>
-                        {COLUMNS.map((col) => (
-                          <td key={col.key} className="db-td">
-                            <EditableCell
-                              student={student}
-                              col={col}
-                              onSaved={handleSaved}
-                            />
+                    {displayed.map((student, idx) => {
+                      const isEditing = editingRowId === student.id;
+                      return (
+                        <tr
+                          key={student.id}
+                          className={`db-row${isEditing ? " db-row-editing" : ""}`}
+                          style={{ animationDelay: `${Math.min(idx, 30) * 25}ms` }}
+                        >
+                          <td className="db-td-num">{idx + 1}</td>
+                          <td className="db-td-link">
+                            {isEditing ? (
+                              <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                                {rowSaving
+                                  ? <Loader2 size={14} className="spin" />
+                                  : <>
+                                      <button className="db-cell-ok" onClick={() => saveEditRow(student.id)} title="שמור"><Check size={13} /></button>
+                                      <button className="db-cell-cancel" onClick={cancelEditRow} title="בטל"><X size={13} /></button>
+                                    </>
+                                }
+                              </div>
+                            ) : (
+                              <button
+                                className="db-edit-row-btn"
+                                onClick={() => startEditRow(student)}
+                                title="ערוך שורה"
+                              >
+                                <Pencil size={13} />
+                              </button>
+                            )}
                           </td>
-                        ))}
-                        <td className="db-td-link">
-                          <button
-                            className="db-graduate-btn"
-                            onClick={() => { setGraduateError(""); setGraduateDate(""); setGraduateTarget(student); }}
-                            title="עזב — העבר לבוגרים"
-                          >
-                            <GraduationCap size={14} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                          <td className="db-td-link">
+                            <button
+                              className="db-card-btn"
+                              onClick={() => navigate(`/student/${student.passportOrId || student.id}`)}
+                              title="פתח כרטיס"
+                            >
+                              ←
+                            </button>
+                          </td>
+                          {COLUMNS.map((col) => (
+                            <td key={col.key} className="db-td">
+                              <RowCell
+                                student={student}
+                                col={col}
+                                editing={isEditing}
+                                draft={rowDraft}
+                                onDraftChange={handleDraftChange}
+                                emailCopied={copiedEmailId === student.id}
+                                onEmailCopy={(val) => copyEmail(val, student.id)}
+                              />
+                            </td>
+                          ))}
+                          <td className="db-td-link">
+                            <button
+                              className="db-graduate-btn"
+                              onClick={() => { setGraduateError(""); setGraduateDate(""); setGraduateTarget(student); }}
+                              title="עזב — העבר לבוגרים"
+                            >
+                              <GraduationCap size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </AnimatePresence>
                 </tbody>
               </table>

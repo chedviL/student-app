@@ -662,3 +662,92 @@
   transition: transform 0.15s, box-shadow 0.15s;
 }
 .db-graduate-btn:hover { transform: scale(1.1); box-shadow: 0 4px 10px rgba(124,111,205,0.35); }
+
+/* ── Row-level edit button ── */
+
+.db-edit-row-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(245, 230, 200, 0.5);
+  color: var(--gold);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.db-edit-row-btn:hover {
+  background: rgba(200, 134, 63, 0.18);
+  transform: scale(1.1);
+}
+
+/* ── Editing row highlight ── */
+
+.db-row-editing {
+  background: rgba(255, 248, 220, 0.85) !important;
+  outline: 2px solid rgba(200, 134, 63, 0.4);
+}
+
+/* ── Row-mode cell input (no save/cancel inline — buttons in separate column) ── */
+
+.db-cell-input-row {
+  width: 100%;
+  min-width: 60px;
+  padding: 3px 6px;
+  border-radius: 7px;
+  border: 1.5px solid var(--border-strong);
+  background: #fffdf5;
+  color: var(--brown-deep);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(200, 134, 63, 0.12);
+}
+
+.db-cell-input-row:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(200, 134, 63, 0.2);
+}
+
+/* ── Email copy cell ── */
+
+.db-cell-email-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 2px 5px;
+  transition: background 0.15s;
+  direction: ltr;
+  unicode-bidi: isolate;
+  color: var(--brown-deep);
+  font-size: 13px;
+}
+
+.db-cell-email-copy:hover {
+  background: rgba(200, 134, 63, 0.12);
+}
+
+.db-cell-copy-icon {
+  opacity: 0;
+  flex-shrink: 0;
+  color: var(--gold);
+  transition: opacity 0.15s;
+}
+
+.db-cell-email-copy:hover .db-cell-copy-icon {
+  opacity: 1;
+}
+
+.db-cell-copied {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #2e7d32;
+  font-weight: 700;
+  font-size: 12px;
+}
