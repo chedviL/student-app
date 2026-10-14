@@ -1,73 +1,25 @@
-# React + TypeScript + Vite
+# 🎓 Educational Institution Management System
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A comprehensive, full-stack management system developed for an active educational institution. This project was built from the ground up to solve real-world administrative challenges and is currently deployed, actively used, and continuously improved based on direct client feedback.
 
-Currently, two official plugins are available:
+> **Note:** [Insert a link to a live demo here, or add a GIF/Screenshot showing the system in action. E.g., `![System Demo](./demo.gif)`]
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🚀 The Product
+Unlike standard portfolio projects, this is a production-level system designed to meet specific client requirements. It streamlines the day-to-day operations of the institution, providing an intuitive interface for data management and reporting.
 
-## React Compiler
+## 💻 Tech Stack
+- **Frontend:** React, TypeScript, Vite
+- **Backend & Database:** PostgreSQL, Supabase
+- **Styling:** [Add your styling solution here, e.g., Tailwind CSS / Material UI / CSS Modules]
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## ✨ Key Features
+- **Real-World Application:** Actively serving a real client with live data.
+- **Client-Driven Development:** Features and workflows designed (and iterated upon) based on direct feedback from the institution's staff.
+- **Robust Data Management:** Secure and efficient handling of institutional records using Supabase and PostgreSQL.
+- **Type Safety:** End-to-end type safety using TypeScript to minimize runtime errors and ensure maintainable code.
 
-## Expanding the ESLint configuration
+## 🛠️ Running Locally
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+1. Clone the repository:
+   ```bash
+   git clone [https://github.com/chedviL/student-app.git](https://github.com/chedviL/student-app.git)
