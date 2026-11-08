@@ -88,7 +88,9 @@ describe('EditPage — BULK edit (the 15.10 path)', () => {
   it('bulk payment section with an explicit new date sends that date only', async () => {
     render(<EditForm section="payment" students={students66.slice(0, 3)} onDone={vi.fn()} onBack={vi.fn()} />);
     fireEvent.change(inputFor('תאריך תחילת גבייה'), { target: { value: '2026-09-20' } });
-    await act(async () => { fireEvent.click(screen.getByText(/שמור/, { selector: 'button' })); });
+    fireEvent.click(screen.getByText(/שמור/, { selector: 'button' }));
+    expect(updateSpy).not.toHaveBeenCalled();                  // consequences dialog first
+    await act(async () => { fireEvent.click(screen.getByText('הבנתי — שמור')); });
     await waitFor(() => expect(updateSpy).toHaveBeenCalledTimes(3));
     for (const [row] of updateSpy.mock.calls) expect(row).toEqual({ tuition_start_date: '2026-09-20' });
   });

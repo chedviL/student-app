@@ -8,6 +8,7 @@ import { useStudents } from "../context/StudentsContext";
 import { useAlumni } from "../context/AlumniContext";
 import { updateStudent, createStudent } from "../api/studentsApi";
 import { diffStudent } from "../utils/studentHelpers";
+import { DEFAULT_TUITION_START_DATE, describeStartDateChange } from "../constants/tuitionPolicy";
 import { graduateStudent } from "../api/alumniApi";
 import type { Student } from "../types/student";
 import "./DatabasePage.css";
@@ -534,7 +535,7 @@ export default function DatabasePage() {
               <button className="db-export-btn" onClick={() => setShowExportModal(true)}>
                 <Download size={15} /> ייצוא
               </button>
-              <button className="db-add-btn" onClick={() => { setNewStudent({}); setAddError(""); setShowAddModal(true); }}>
+              <button className="db-add-btn" onClick={() => { setNewStudent({ tuitionStartDate: DEFAULT_TUITION_START_DATE }); setAddError(""); setShowAddModal(true); }}>
                 <UserPlus size={15} /> הוסף תלמיד
               </button>
             </div>
@@ -654,6 +655,17 @@ export default function DatabasePage() {
                       placeholder={f.label} />
                   </div>
                 ))}
+                <div className="db-add-field">
+                  <label className="edit-label">תאריך תחילת גבייה</label>
+                  <input className="edit-input" type="date" dir="ltr" data-testid="new-student-start-date"
+                    value={newStudent.tuitionStartDate ?? ""}
+                    onChange={(e) => setNewStudent((p) => ({ ...p, tuitionStartDate: e.target.value }))} />
+                  <div style={{ fontSize: 12, color: newStudent.tuitionStartDate ? "#8b6544" : "#b71c1c", marginTop: 4, lineHeight: 1.5 }}>
+                    {newStudent.tuitionStartDate
+                      ? describeStartDateChange(null, newStudent.tuitionStartDate).consequences.join(" ")
+                      : "בלי תאריך — התלמיד לא יחויב בחיוב החודשי."}
+                  </div>
+                </div>
               </div>
 
               <div className="export-modal-footer" style={{ marginTop: 20 }}>

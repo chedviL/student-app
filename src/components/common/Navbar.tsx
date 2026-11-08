@@ -4,6 +4,7 @@ import { Search, Database, Home, Pencil, GraduationCap, CreditCard, LogOut, Spar
 import logo from "../../assets/logo.png";
 import { useAuth } from "../../context/AuthContext";
 import { getMyProfile } from "../../api/tuitionApi";
+import MissingStartDateAlert from "../tuition/MissingStartDateAlert";
 import "./Navbar.css";
 
 const NAV_ITEMS = [
@@ -59,6 +60,7 @@ export default function Navbar() {
         </ul>
 
         <div className="navbar-user">
+          <MissingStartDateAlert />
           {displayName && (
             <span className="navbar-username" title={displayName}>
               {displayName}

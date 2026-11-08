@@ -6,6 +6,9 @@ import { useStudents } from "../context/StudentsContext";
 import { useAlumni } from "../context/AlumniContext";
 import { updateStudent } from "../api/studentsApi";
 import { diffStudent } from "../utils/studentHelpers";
+import { describeStartDateChange } from "../constants/tuitionPolicy";
+import type { StartDateChangeExplanation } from "../constants/tuitionPolicy";
+import StartDateChangeDialog from "../components/tuition/StartDateChangeDialog";
 import { graduateStudent } from "../api/alumniApi";
 import type { Student } from "../types/student";
 import { useStudentTuition } from "../hooks/useStudentTuition";
@@ -177,17 +180,29 @@ export default function StudentCardPage() {
     setSaveError("");
   }
 
+  const [dateConfirm, setDateConfirm] = useState<StartDateChangeExplanation | null>(null);
+
   async function saveEdit() {
     if (!student) return;
+    const patch = diffStudent(student, draft);
+    if (Object.keys(patch).length === 0) {
+      setEditMode(false);
+      setDraft({});
+      return;
+    }
+    if ("tuitionStartDate" in patch) {
+      setDateConfirm(describeStartDateChange(student.tuitionStartDate, patch.tuitionStartDate));
+      return;
+    }
+    await commitEdit(patch);
+  }
+
+  async function commitEdit(patch: Partial<Student>) {
+    if (!student) return;
+    setDateConfirm(null);
     setSaving(true);
     setSaveError("");
     try {
-      const patch = diffStudent(student, draft);
-      if (Object.keys(patch).length === 0) {
-        setEditMode(false);
-        setDraft({});
-        return;
-      }
       const saved = await updateStudent(student.id, patch);
       // עדכון מיידי ב-Context — בלי המתנה ל-Realtime
       updateLocal(saved);
@@ -401,6 +416,15 @@ export default function StudentCardPage() {
             </AnimatePresence>
           </div>
 
+          {dateConfirm && student && (
+            <StartDateChangeDialog
+              explanation={dateConfirm}
+              busy={saving}
+              onConfirm={() => commitEdit(diffStudent(student, draft))}
+              onCancel={() => setDateConfirm(null)}
+            />
+          )}
+
           {/* ── Unified grid: 12 data fields + birthdate + 2 action buttons ─── */}
           <motion.div className="student-profile-grid" variants={containerVariants}>
             {/* Data fields */}
@@ -410,11 +434,11 @@ export default function StudentCardPage() {
                 {editMode ? (
                   <input
                     className="profile-edit-input"
-                    type={field.type ?? "text"}
+                    type={field.key === "tuitionStartDate" ? "date" : (field.type ?? "text")}
                     value={(draft[field.key] as string) ?? ""}
                     onChange={(e) => setDraft((d) => ({ ...d, [field.key]: e.target.value }))}
                     placeholder={field.label}
-                    dir={field.type === "tel" ? "ltr" : field.type === "email" ? "ltr" : undefined}
+                    dir={field.type === "tel" || field.type === "email" || field.key === "tuitionStartDate" ? "ltr" : undefined}
                   />
                 ) : (
                   renderValue(field, student, copied, copyPhone)
