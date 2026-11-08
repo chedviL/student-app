@@ -41,11 +41,17 @@ INSERT INTO students (id, first_name, last_name, class_name, passport_or_id, tui
  (pg_temp.u(18), 'יח','תקין-מלא',              'כיתה ו', 'P18', '1250', 'קירוב לבבות', 'ILS', '2026-08-20'),
  (pg_temp.u(19), 'יט','ספטמבר-ראשון-נמחק',     'כיתה ב', 'P19', '1000', 'מזומן',       'ILS', NULL),
  (pg_temp.u(20), 'כ', 'שכל-לא-מספרי',          'כיתה ב', 'P20', '1,400','מזומן',       'ILS', '2026-08-20'),
- (pg_temp.u(21), 'כא','שכל-אפס-הפסיק',          'כיתה ב', 'P21', '0',    'מזומן',       'ILS', '2026-08-20');
+ (pg_temp.u(21), 'כא','שכל-אפס-הפסיק',          'כיתה ב', 'P21', '0',    'מזומן',       'ILS', '2026-08-20'),
+ (pg_temp.u(23), 'כג','ללא-שכל-חיוב-ידני',      'כיתה ב', 'P23', '',     'מזומן',       'ILS', NULL),
+ (pg_temp.u(24), 'כד','אא-זוכה-בעבר-חסר-אוקט',  'כיתה ב', 'P24', '700',  'א"א',         'ILS', '2026-08-20'),
+ (pg_temp.u(25), 'כה','שרשור-ספט-אוקט',          'כיתה א', 'P25', '700',  'א"א',         'USD', NULL),
+ (pg_temp.u(26), 'כו','שרשור-אשראי',             'כיתה א', 'P26', '500',  'אשראי',       'USD', NULL),
+ (pg_temp.u(27), 'כז','עבר-למזומן-אחרי-אוג',     'כיתה א', 'P27', '900',  'מזומן',       'ILS', '2026-08-20');
 
 -- alumni (graduated in October)
 INSERT INTO alumni (id, first_name, last_name, passport_or_id, tuition, tuition_rank, tuition_currency, tuition_start_date, graduated_at)
-VALUES (pg_temp.u(16), 'טז', 'בוגר', 'P16', '1000', 'מזומן', 'ILS', '2026-08-20', '2026-10-05');
+VALUES (pg_temp.u(16), 'טז', 'בוגר', 'P16', '1000', 'מזומן', 'ILS', '2026-08-20', '2026-10-25'),
+       (pg_temp.u(22), 'כב', 'בוגר-לפני-חיוב', 'P22', '1000', 'מזומן', 'ILS', '2026-08-20', '2026-09-10');
 
 -- 1: credit, wiped → Oct charge+credit missing (A)
 SELECT pg_temp.tx(1, '2026-08-01', 'monthly_charge', -1400, 'ILS'), pg_temp.tx(1, '2026-08-01', 'automatic_payment', 1400, 'ILS'),
@@ -98,3 +104,18 @@ SELECT pg_temp.tx(18, m, 'monthly_charge', -1250, 'ILS'), pg_temp.tx(18, m, 'aut
 FROM unnest(ARRAY['2026-08-01','2026-09-01','2026-10-01']::date[]) m;
 -- 19: first charged in September, wiped → Oct A; start-date restore B (first month ≠ Aug)
 SELECT pg_temp.tx(19, '2026-09-01', 'monthly_charge', -1000, 'ILS');
+-- 22: graduated 2026-09-10 (before Sep 20) — Sep/Oct not due → C
+SELECT pg_temp.tx(22, '2026-08-01', 'monthly_charge', -1000, 'ILS');
+-- 23: no tuition, never on automatic billing, billed manually → C
+SELECT pg_temp.tx(23, '2026-09-01', 'manual_charge', -300, 'ILS', '2026-09-05', 'חיוב ידני');
+-- 24: was credited in Aug (other rank), Sep charge without credit (rank changed), Oct charge missing → Oct A (charge only)
+SELECT pg_temp.tx(24, '2026-08-01', 'monthly_charge', -700, 'ILS'), pg_temp.tx(24, '2026-08-01', 'automatic_payment', 700, 'ILS'),
+       pg_temp.tx(24, '2026-09-01', 'monthly_charge', -700, 'ILS');
+-- 25: Aug charged, Sep & Oct missing, Sep advance payment only → Sep A and Oct A (chain)
+SELECT pg_temp.tx(25, '2026-08-01', 'monthly_charge', -700, 'USD'),
+       pg_temp.tx(25, '2026-09-01', 'manual_payment', 5000, 'USD', '2026-09-06', 'מקדמה');
+-- 26: credit student, Aug charge+credit, Sep & Oct missing → Sep A, Oct A with credits (chain)
+SELECT pg_temp.tx(26, '2026-08-01', 'monthly_charge', -500, 'USD'), pg_temp.tx(26, '2026-08-01', 'automatic_payment', 500, 'USD');
+-- 27: credited Aug, rank changed to cash; Sep/Oct charged by cron without credit → consistent → C
+SELECT pg_temp.tx(27, '2026-08-01', 'monthly_charge', -900, 'ILS'), pg_temp.tx(27, '2026-08-01', 'automatic_payment', 900, 'ILS'),
+       pg_temp.tx(27, '2026-09-01', 'monthly_charge', -900, 'ILS'), pg_temp.tx(27, '2026-10-01', 'monthly_charge', -900, 'ILS');

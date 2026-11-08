@@ -48,15 +48,27 @@ SELECT pg_temp.eq((SELECT string_agg(DISTINCT category, '') FROM recon_result WH
 SELECT pg_temp.eq(pg_temp.cat(15, '2026-10-01'), 'C', 'S15 cancelled auto charge respected → C');
 SELECT pg_temp.eq((SELECT string_agg(DISTINCT category, '') FROM recon_result WHERE student_id = pg_temp.u(18)), 'C', 'S18 complete קירוב לבבות → C');
 SELECT pg_temp.check(NOT EXISTS (SELECT 1 FROM recon_result WHERE student_id = pg_temp.u(21)), 'S21 tuition 0, no tx → not billed, not reported');
+SELECT pg_temp.eq((SELECT string_agg(category, ',' ORDER BY month) FROM recon_result WHERE student_id = pg_temp.u(22)), 'C,C,C', 'S22 graduated before Sep 20 → Sep/Oct C');
+SELECT pg_temp.eq((SELECT string_agg(DISTINCT category, '') FROM recon_result WHERE student_id = pg_temp.u(23)), 'C', 'S23 no tuition, manual billing only → C');
+SELECT pg_temp.eq(pg_temp.cat(24, '2026-10-01'), 'A', 'S24 rank changed before Sep (no Sep credit) → Oct A charge only');
+SELECT pg_temp.check((SELECT credit_state FROM recon_result WHERE student_id = pg_temp.u(24) AND month = '2026-10-01') = 'not_needed', 'S24 no credit due');
 
 -- plan contains ONLY category A rows, exact amounts, no currency mixing
-SELECT pg_temp.eq((SELECT count(*) FROM recon_plan)::int, 8, 'plan rows = 8');
+SELECT pg_temp.eq(pg_temp.cat(25, '2026-09-01'), 'A', 'S25 Sep proven by Aug → A');
+SELECT pg_temp.eq(pg_temp.cat(25, '2026-10-01'), 'A', 'S25 Oct chained on recovered Sep → A');
+SELECT pg_temp.eq(pg_temp.cat(26, '2026-10-01'), 'A', 'S26 credit student Oct chained (charge+credit) → A');
+SELECT pg_temp.check((SELECT credit_missing FROM recon_result WHERE student_id = pg_temp.u(26) AND month = '2026-10-01'), 'S26 Oct credit included');
+SELECT pg_temp.eq(pg_temp.cat(19, '2026-08-01'), 'B', 'chain never promotes a month without an A predecessor (S19 Aug stays B)');
+SELECT pg_temp.eq(pg_temp.cat(7, '2026-10-01'), 'B', 'chain never overrides AMOUNT_CHANGED (S7)');
+SELECT pg_temp.eq((SELECT string_agg(category, ',' ORDER BY month) FROM recon_result WHERE student_id = pg_temp.u(27)), 'B,C,C',
+       'S27 rank changed to cash after Aug: Sep/Oct cron charges without credit are consistent (C); Aug credit flagged for review (B)');
+SELECT pg_temp.eq((SELECT count(*) FROM recon_plan)::int, 15, 'plan rows = 15');
 SELECT pg_temp.check(NOT EXISTS (SELECT 1 FROM recon_plan p JOIN recon_result r ON r.student_id = p.student_id AND r.month = p.billing_month
        WHERE r.category <> 'A'), 'plan never contains B/C rows');
-SELECT pg_temp.eq((SELECT sum(amount) FROM recon_plan WHERE currency='ILS' AND transaction_type='monthly_charge'), -4500.00, 'ILS charges -4500');
-SELECT pg_temp.eq((SELECT sum(amount) FROM recon_plan WHERE currency='USD' AND transaction_type='monthly_charge'), -400.00, 'USD charges -400');
+SELECT pg_temp.eq((SELECT sum(amount) FROM recon_plan WHERE currency='ILS' AND transaction_type='monthly_charge'), -5200.00, 'ILS charges -5200');
+SELECT pg_temp.eq((SELECT sum(amount) FROM recon_plan WHERE currency='USD' AND transaction_type='monthly_charge'), -2800.00, 'USD charges -2800');
 SELECT pg_temp.eq((SELECT sum(amount) FROM recon_plan WHERE currency='ILS' AND transaction_type='automatic_payment'), 2500.00, 'ILS credits +2500');
-SELECT pg_temp.eq((SELECT sum(amount) FROM recon_plan WHERE currency='USD' AND transaction_type='automatic_payment'), 400.00, 'USD credits +400');
+SELECT pg_temp.eq((SELECT sum(amount) FROM recon_plan WHERE currency='USD' AND transaction_type='automatic_payment'), 1400.00, 'USD credits +1400');
 SELECT pg_temp.check(NOT EXISTS (SELECT 1 FROM recon_plan WHERE student_id IN (pg_temp.u(3), pg_temp.u(4), pg_temp.u(6))),
        'no charge created where a manual charge/payment may replace it (no double debt)');
 SELECT pg_temp.check(bool_and(CASE transaction_type WHEN 'monthly_charge' THEN transaction_date = billing_month + 19
@@ -64,7 +76,7 @@ SELECT pg_temp.check(bool_and(CASE transaction_type WHEN 'monthly_charge' THEN t
 
 -- start-date restore proposal
 SELECT pg_temp.eq((SELECT string_agg(right(student_id::text, 2), ',' ORDER BY student_id) FROM recon_start_date WHERE category = 'A'),
-       '01,02,03,04,06,07,10', 'start date A: wiped students first charged Aug 2026');
+       '01,02,03,04,06,07,10,25,26', 'start date A: wiped students first charged Aug 2026');
 SELECT pg_temp.check(bool_and(proposed_start_date = date '2026-08-20'), 'proposed date 2026-08-20') FROM recon_start_date WHERE category = 'A';
 SELECT pg_temp.eq((SELECT string_agg(right(student_id::text, 2), ',' ORDER BY student_id) FROM recon_start_date WHERE category = 'B'),
        '17,19', 'start date B: first charged later / never charged');

@@ -214,6 +214,8 @@ SELECT
   pcr.amount AS prev_credit_amount, ncr.amount AS next_credit_amount,
   (SELECT count(*) FROM recon_tx t WHERE t.student_id = r.student_id AND t.is_auto_credit AND t.is_active)
                                                                              AS auto_credits_ever,
+  (SELECT count(*) FROM recon_tx t WHERE t.student_id = r.student_id AND t.is_auto_charge)
+                                                                             AS auto_charges_ever,
   (SELECT count(*) FROM recon_tx t WHERE t.student_id = r.student_id AND t.is_auto_credit AND t.is_active
      AND NOT (pe.cur_rank = ANY (p.auto_ranks)))                            AS auto_credits_with_unapproved_rank,
   -- manual activity, this month & currency
@@ -303,7 +305,12 @@ WITH d AS (
        AND f.cur_currency = f.currency)                                     AS ev_prev,
     (f.next_charge_amount = -f.cur_amount AND f.next_charge_currency = f.cur_currency
        AND f.cur_currency = f.currency)                                     AS ev_next,
-    (f.start_date IS NOT NULL AND date_trunc('month', f.start_date)::date > f.month) AS not_yet_billable
+    (f.start_date IS NOT NULL AND date_trunc('month', f.start_date)::date > f.month) AS not_yet_billable,
+    -- left before this month's charge date (20th) → nothing was due
+    (f.person_kind = 'alumni' AND f.graduated_at IS NOT NULL AND f.graduated_at < (f.month + 19)::timestamp) AS graduated_before_charge,
+    -- no tuition at all (empty / 0) and never on automatic billing → billed manually, by design
+    (coalesce(f.cur_amount, 0) = 0 AND f.auto_charges_ever = 0
+       AND (nullif(trim(f.cur_tuition_raw), '') IS NULL OR f.cur_amount = 0))  AS not_on_auto_billing
   FROM recon_facts f
 ),
 charge AS (
@@ -313,6 +320,8 @@ charge AS (
       WHEN d.auto_charge_count >= 1                      THEN 'present'
       WHEN d.auto_charge_cancelled OR d.any_auto_charge_row THEN 'cancelled_or_other'
       WHEN d.not_yet_billable                            THEN 'not_billable'
+      WHEN d.graduated_before_charge                     THEN 'not_billable'
+      WHEN d.not_on_auto_billing AND d.person_kind = 'student' THEN 'not_billable'
       ELSE 'missing'
     END AS charge_state
   FROM d
@@ -321,7 +330,7 @@ charge_reasons AS (
   SELECT c.*,
     array_remove(ARRAY[
       CASE WHEN c.person_kind IS NULL THEN 'ORPHAN: אין תלמיד/בוגר עם המזהה' END,
-      CASE WHEN c.currency IS NULL THEN 'NO_CURRENCY: מטבע צפוי לא ידוע' END,
+      CASE WHEN c.currency IS NULL AND c.charge_state = 'missing' THEN 'NO_CURRENCY: מטבע צפוי לא ידוע' END,
       CASE WHEN c.charge_state = 'other_currency' AND c.net_existing <> 0
            THEN 'FOREIGN_CURRENCY_TX: תנועות במטבע שאינו המטבע הצפוי — לא מתקזזות' END,
       CASE WHEN c.auto_charge_count > 1 THEN 'DUPLICATE_AUTO_CHARGE: יותר מחיוב אוטומטי פעיל אחד' END,
@@ -371,6 +380,10 @@ credit AS (
       WHEN cr.auto_credit_cancelled OR cr.any_auto_credit_row     THEN 'cancelled_or_other'
       WHEN cr.charge_state IN ('not_billable', 'cancelled_or_other') THEN 'n/a'
       WHEN NOT coalesce(cr.rank_approved_now, false) AND cr.auto_credits_ever = 0 THEN 'not_needed'
+      -- not a credit rank now AND no credit the month before → rank changed earlier, nothing due
+      WHEN NOT coalesce(cr.rank_approved_now, false) AND cr.prev_credit_amount IS NULL THEN 'not_needed'
+      -- the cron created the charge and, with the rank of that day, no credit; rank still not a credit rank → consistent
+      WHEN NOT coalesce(cr.rank_approved_now, false) AND cr.charge_state = 'present' THEN 'not_needed'
       ELSE 'missing'
     END AS credit_state
   FROM charge_reasons cr
@@ -418,6 +431,8 @@ SELECT
     WHEN x.charge_state = 'missing' AND x.ev_prev AND x.ev_next THEN 'חיוב אוטומטי זהה בחודש הקודם ובחודש הבא'
     WHEN x.charge_state = 'missing' AND x.ev_prev THEN 'חיוב אוטומטי זהה בחודש הקודם (' || x.prev_charge_amount::text || ' ' || x.prev_charge_currency || ')'
     WHEN x.charge_state = 'missing' THEN 'אין ראיה מספקת — סכום נוכחי בלבד (אינדיקטיבי)'
+    WHEN x.charge_state = 'not_billable' AND x.graduated_before_charge THEN 'עזב לפני מועד החיוב (' || to_char(x.graduated_at, 'YYYY-MM-DD') || ')'
+    WHEN x.charge_state = 'not_billable' AND x.not_on_auto_billing THEN 'ללא שכ"ל — לא בגבייה אוטומטית (חיוב ידני בלבד)'
     WHEN x.charge_state = 'not_billable' THEN 'לפני תאריך תחילת גבייה ' || x.start_date::text
     WHEN x.charge_state = 'cancelled_or_other' THEN 'חיוב אוטומטי בוטל ידנית / קיים במטבע אחר'
   END AS amount_evidence,
@@ -450,6 +465,50 @@ SELECT
   (x.charge_state = 'present' AND x.manual_debit_count > 0) OR x.auto_charge_count > 1 AS suspected_duplicate,
   x.all_tx_detail
 FROM credit_reasons x;
+
+-- ── chain pass ──────────────────────────────────────────────────────────────
+-- A student missing several consecutive months: month M is proven by M-1 (A),
+-- but M+1 is only provable once M is recovered. Promote B→A ONLY when every
+-- B reason is "no evidence from the previous month" AND the previous month of the
+-- same student+currency is itself A with the same amount (and, for a credit, an
+-- A credit). Repeats until stable, so the plan is a fixed point: running it
+-- leaves nothing new to recover.
+DO $$
+DECLARE v_n integer;
+BEGIN
+  LOOP
+    UPDATE recon_result r SET
+      category           = 'A',
+      safe_auto_recovery = true,
+      needs_human        = false,
+      expected_charge    = CASE WHEN r.charge_missing THEN p.expected_charge ELSE r.expected_charge END,
+      amount_evidence    = CASE WHEN r.charge_missing
+                                THEN 'שרשור: חיוב ' || p.month::text || ' משוחזר (A) באותו סכום ומטבע'
+                                ELSE r.amount_evidence END,
+      historical_rank_evidence = CASE WHEN r.credit_missing
+                                THEN 'שרשור: זיכוי ' || p.month::text || ' משוחזר (A)'
+                                ELSE r.historical_rank_evidence END,
+      b_reasons          = '{}'
+    FROM recon_result p
+    WHERE p.student_id = r.student_id
+      AND p.currency   = r.currency
+      AND p.month      = (r.month - interval '1 month')::date
+      AND p.category   = 'A'
+      AND r.category   = 'B'
+      AND cardinality(r.b_reasons) > 0
+      AND NOT EXISTS (SELECT 1 FROM unnest(r.b_reasons) x
+                      WHERE split_part(x, ':', 1) NOT IN ('NO_HISTORICAL_EVIDENCE', 'NO_PRIOR_MONTH_CHARGE', 'NO_RANK_EVIDENCE'))
+      -- charge side: missing → previous month recovered with the same amount; present → fine
+      AND (NOT r.charge_missing OR (p.charge_missing AND p.expected_charge = -(SELECT pe.cur_amount FROM recon_people pe WHERE pe.student_id = r.student_id)))
+      AND (r.charge_missing OR r.charge_state = 'present')
+      -- credit side: missing → previous month credit recovered too; otherwise must not be missing
+      AND (NOT r.credit_missing OR p.credit_missing)
+      -- NO_RANK_EVIDENCE is acceptable only when the credit itself chains
+      AND (r.credit_missing OR NOT EXISTS (SELECT 1 FROM unnest(r.b_reasons) x WHERE x LIKE 'NO_RANK_EVIDENCE:%'));
+    GET DIAGNOSTICS v_n = ROW_COUNT;
+    EXIT WHEN v_n = 0;
+  END LOOP;
+END $$;
 
 -- ── recovery plan: ONLY category A ─────────────────────────────────────────
 -- Charge: amount = -current tuition (proven equal to an adjacent automatic charge),
