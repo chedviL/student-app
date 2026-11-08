@@ -10,6 +10,7 @@ import {
 import type { Alumni } from "../types/student";
 import { getAlumni } from "../api/alumniApi";
 import { supabase } from "../lib/supabaseClient";
+import { useAuth } from "./AuthContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -90,8 +91,11 @@ export function AlumniProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState("");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  // prevent double-fetch in StrictMode
-  const fetchedRef = useRef(false);
+  // Data is loaded per logged-in user. Loading once at mount (before login) only
+  // worked while the table was readable anonymously; with RLS it returns nothing.
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+  const loadedForRef = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -126,10 +130,16 @@ export function AlumniProvider({ children }: { children: ReactNode }) {
 
   // ── Initial load ────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (fetchedRef.current) return;
-    fetchedRef.current = true;
+    if (!userId) {
+      // logged out (or session not restored yet): never show another user's data
+      loadedForRef.current = null;
+      setAlumni([]);
+      return;
+    }
+    if (loadedForRef.current === userId) return; // StrictMode double-run guard
+    loadedForRef.current = userId;
     refresh();
-  }, [refresh]);
+  }, [userId, refresh]);
 
   // ── Supabase Realtime subscription ─────────────────────────────────────────
   useEffect(() => {
