@@ -246,7 +246,7 @@ const OP_LABELS: Record<RelOp, string> = {
 
 // ─── EditForm ─────────────────────────────────────────────────────────────────
 
-function EditForm({
+export function EditForm({
   section,
   students,
   onDone,

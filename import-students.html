@@ -508,7 +508,7 @@
 
           addLog('תלמידים תקינים: ' + students.length + ' | דולגו: ' + skipped, 'info');
 
-          uploadBatches(students, 0);
+          uploadBatches(buildBatches(students), 0, 0);
 
         } catch(err) {
           addLog('שגיאה: ' + err.message, 'error');
@@ -518,28 +518,48 @@
       reader.readAsArrayBuffer(file);
     });
 
-    function uploadBatches(students, offset) {
+    // Rows are grouped by their EXACT set of fields before upserting. In an upsert that
+    // hits an existing student, every column of the request is overwritten — a column
+    // that is merely absent from one row of a mixed batch would be written as NULL
+    // (e.g. wiping tuition_start_date when that Excel cell is empty). With one field-set
+    // per request, a column missing from a row is never part of that row's update.
+    function buildBatches(students) {
       var BATCH = 50;
-      if (offset >= students.length) {
+      var groups = {};
+      var order = [];
+      students.forEach(function(st) {
+        var sig = Object.keys(st).sort().join('|');
+        if (!groups[sig]) { groups[sig] = []; order.push(sig); }
+        groups[sig].push(st);
+      });
+      var batches = [];
+      order.forEach(function(sig) {
+        for (var i = 0; i < groups[sig].length; i += BATCH) batches.push(groups[sig].slice(i, i + BATCH));
+      });
+      return batches;
+    }
+
+    function uploadBatches(batches, idx, done) {
+      if (idx >= batches.length) {
         addLog('', '');
         addLog('=== הייבוא הסתיים בהצלחה! ===', 'success');
-        addLog('סה"כ הועלו: ' + students.length + ' תלמידים', 'success');
+        addLog('סה"כ הועלו: ' + done + ' תלמידים', 'success');
         document.getElementById('importBtn').disabled = false;
         return;
       }
 
-      var batch = students.slice(offset, offset + BATCH);
-      addLog('מעלה ' + (offset + 1) + '-' + (offset + batch.length) + '...', 'info');
+      var batch = batches[idx];
+      addLog('מעלה קבוצה ' + (idx + 1) + '/' + batches.length + ' (' + batch.length + ' שורות)...', 'info');
 
       db.from('students')
-        .upsert(batch, { onConflict: 'passport_or_id' })
+        .upsert(batch, { onConflict: 'passport_or_id', defaultToNull: false })
         .then(function(result) {
           if (result.error) {
             addLog('שגיאה: ' + result.error.message, 'error');
             document.getElementById('importBtn').disabled = false;
           } else {
             addLog('✓ ' + batch.length + ' שורות הועלו', 'success');
-            uploadBatches(students, offset + BATCH);
+            uploadBatches(batches, idx + 1, done + batch.length);
           }
         });
     }

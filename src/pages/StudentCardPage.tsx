@@ -5,6 +5,7 @@ import { Pencil, X, Check, Loader2, GraduationCap, ChevronLeft } from "lucide-re
 import { useStudents } from "../context/StudentsContext";
 import { useAlumni } from "../context/AlumniContext";
 import { updateStudent } from "../api/studentsApi";
+import { diffStudent } from "../utils/studentHelpers";
 import { graduateStudent } from "../api/alumniApi";
 import type { Student } from "../types/student";
 import { useStudentTuition } from "../hooks/useStudentTuition";
@@ -181,7 +182,13 @@ export default function StudentCardPage() {
     setSaving(true);
     setSaveError("");
     try {
-      const saved = await updateStudent(student.id, draft);
+      const patch = diffStudent(student, draft);
+      if (Object.keys(patch).length === 0) {
+        setEditMode(false);
+        setDraft({});
+        return;
+      }
+      const saved = await updateStudent(student.id, patch);
       // עדכון מיידי ב-Context — בלי המתנה ל-Realtime
       updateLocal(saved);
       setSaveSuccess(true);

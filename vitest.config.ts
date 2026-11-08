@@ -5,6 +5,11 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    // Unit tests never talk to a real Supabase — dummy values so supabaseClient can be constructed.
+    env: {
+      VITE_SUPABASE_URL: 'http://localhost:54321',
+      VITE_SUPABASE_ANON_KEY: 'unit-test-dummy-key',
+    },
     include: ['src/test/unit/**/*.test.ts', 'src/test/unit/**/*.test.tsx'],
     coverage: {
       provider: 'v8',

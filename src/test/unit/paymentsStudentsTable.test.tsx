@@ -17,6 +17,12 @@ vi.mock('react-router-dom', async () => {
   return { ...actual, useNavigate: () => mockNavigate };
 });
 
+// ── mock StudentsContext (component calls useStudents().updateLocal) ─────────
+const mockUpdateLocal = vi.fn();
+vi.mock('../../context/StudentsContext', () => ({
+  useStudents: () => ({ updateLocal: mockUpdateLocal }),
+}));
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 function makeStudent(overrides: Partial<Student> = {}): Student {

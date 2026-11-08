@@ -7,6 +7,7 @@ import type { ExportColDef } from "../utils/excelExport";
 import { useStudents } from "../context/StudentsContext";
 import { useAlumni } from "../context/AlumniContext";
 import { updateStudent, createStudent } from "../api/studentsApi";
+import { diffStudent } from "../utils/studentHelpers";
 import { graduateStudent } from "../api/alumniApi";
 import type { Student } from "../types/student";
 import "./DatabasePage.css";
@@ -316,7 +317,14 @@ export default function DatabasePage() {
   async function saveEditRow(studentId: string) {
     setRowSaving(true);
     try {
-      const saved = await updateStudent(studentId, rowDraft);
+      const original = localStudents.find((s) => s.id === studentId);
+      const patch = original ? diffStudent(original, rowDraft) : rowDraft;
+      if (Object.keys(patch).length === 0) {
+        setEditingRowId(null);
+        setRowDraft({});
+        return;
+      }
+      const saved = await updateStudent(studentId, patch);
       updateLocal(saved);
       handleSaved(saved);
       setEditingRowId(null);
