@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { rankOptionsFor } from '../../constants/tuitionRanks';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Loader2, ChevronDown, ChevronUp, Check, Pencil } from 'lucide-react';
 import { useStudentTuition } from '../../hooks/useStudentTuition';
@@ -232,9 +233,9 @@ export function TuitionModal({ student, onClose, onTransactionAdded }: TuitionMo
                             style={{ padding: '3px 8px', borderRadius: 8, border: '1.5px solid #c58a46', background: '#fffef9', color: '#4c2415', fontSize: 15, fontWeight: 800, fontFamily: 'inherit', outline: 'none' }}
                           >
                             <option value="">—</option>
-                            <option value="שלילי">שלילי</option>
-                            <option value="מזומן">מזומן</option>
-                            <option value="כן">כן</option>
+                            {rankOptionsFor(staticDraft.tuitionRank).map((r) => (
+                              <option key={r} value={r}>{r}</option>
+                            ))}
                           </select>
                         ) : (
                           <span style={{ fontSize: 16, fontWeight: 900, color: '#5a3420' }}>

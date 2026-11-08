@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Plus } from 'lucide-react';
-import { getAllBalances, summariseBalances, getRecentTransactions } from '../../api/tuitionApi';
-import type { TxWithPerson } from '../../api/tuitionApi';
+import { getAllBalances, summariseBalances, getRecentTransactions, getAutoChargeStatus } from '../../api/tuitionApi';
+import type { TxWithPerson, AutoChargeStatus } from '../../api/tuitionApi';
 import { fmtDate, txTypeLabel } from '../tuition/TuitionSection';
 import type { TuitionBalance, AllBalancesSummary } from '../../types/tuition';
 import type { Student } from '../../types/student';
@@ -38,6 +38,39 @@ function AlumniBadge() {
   );
 }
 
+function fmtMonth(month: string): string {
+  const [y, m] = month.split('-');
+  return `${m}/${y}`;
+}
+
+/** Badge driven by real data — never claims success that was not observed. */
+export function AutoChargeBadge({ status, failed }: { status: AutoChargeStatus | null; failed: boolean }) {
+  const pill = (text: string, color: string, bg: string) => (
+    <span style={{ fontSize: 13, fontWeight: 800, color, background: bg, padding: '3px 12px', borderRadius: 999 }}>
+      {text}
+    </span>
+  );
+  if (failed) return pill('לא ניתן לבדוק את הסטטוס', '#e65100', '#fff3e0');
+  if (!status) return pill('בודק...', '#8b6544', '#f5efe4');
+  if (status.state === 'never') return pill('טרם בוצע חיוב אוטומטי', '#c62828', '#ffebee');
+  const month = fmtMonth(status.lastBillingMonth!);
+  const drop =
+    status.prevMonthCount !== null &&
+    status.prevMonthCount > 0 &&
+    status.lastMonthCount < status.prevMonthCount * 0.85;
+  const detail = `אחרון: ${month} · ${status.lastMonthCount} תלמידים` +
+    (status.prevMonthCount !== null ? ` (חודש קודם: ${status.prevMonthCount})` : '');
+  return (
+    <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+      {status.state === 'ok' && pill('בוצע החודש', '#2e7d32', '#e8f5e9')}
+      {status.state === 'pending' && pill('ממתין להרצה ב-21 לחודש', '#8b6544', '#f5efe4')}
+      {status.state === 'missing' && pill('לא בוצע החודש — נדרשת בדיקה', '#c62828', '#ffebee')}
+      <span style={{ fontSize: 12, color: '#8b6544' }}>{detail}</span>
+      {drop && pill('ירידה חריגה במספר המחויבים', '#c62828', '#ffebee')}
+    </span>
+  );
+}
+
 export default function PaymentsOverview({
   students,
   onRefreshNeeded,
@@ -52,6 +85,8 @@ export default function PaymentsOverview({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [autoStatus, setAutoStatus] = useState<AutoChargeStatus | null>(null);
+  const [autoStatusError, setAutoStatusError] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -69,6 +104,12 @@ export default function PaymentsOverview({
   }
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    getAutoChargeStatus()
+      .then((st) => setAutoStatus(st))
+      .catch(() => setAutoStatusError(true));
+  }, []);
 
   const needsAttention = students.filter((s) => {
     if (!s.tuitionCurrency) return true;
@@ -144,9 +185,7 @@ export default function PaymentsOverview({
 
       <div style={{ ...card, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 10 }}>
         <span style={{ fontSize: 13, fontWeight: 700, color: '#8b6544' }}>חיוב חודשי אוטומטי:</span>
-        <span style={{ fontSize: 13, fontWeight: 800, color: '#2e7d32', background: '#e8f5e9', padding: '3px 12px', borderRadius: 999 }}>
-          מוגדר במערכת
-        </span>
+        <AutoChargeBadge status={autoStatus} failed={autoStatusError} />
       </div>
 
       {attentionStudents.length > 0 && (

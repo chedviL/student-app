@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { rankOptionsFor } from '../../constants/tuitionRanks';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Check, X, Loader2 } from 'lucide-react';
 import type { Student } from '../../types/student';
@@ -276,9 +277,9 @@ export default function PaymentsStudentsTable({
                         onClick={(e) => e.stopPropagation()}
                       >
                         <option value="">—</option>
-                        <option value="שלילי">שלילי</option>
-                        <option value="מזומן">מזומן</option>
-                        <option value="כן">כן</option>
+                        {rankOptionsFor(editDraft.tuitionRank).map((r) => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
                       </select>
                     ) : (
                       s.tuitionRank || '—'

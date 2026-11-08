@@ -1,3 +1,5 @@
+-- ⚠️ HISTORICAL FILE. process_monthly_tuition below is OUTDATED (credits 'א"א', dates = 1st).
+-- The current definition is in migration_v5_tuition_integrity.sql. Do not re-run this file.
 -- ============================================================
 -- TUITION MANAGEMENT SYSTEM — MIGRATION v3
 -- Run in Supabase SQL Editor

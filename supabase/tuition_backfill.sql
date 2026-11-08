@@ -1,3 +1,8 @@
+-- ⛔⛔⛔ DEPRECATED — DO NOT RUN ⛔⛔⛔
+-- run_tuition_backfill() re-runs process_monthly_tuition for past months with CURRENT
+-- amounts/ranks and ignores manual charges → risk of double debt.
+-- It is disabled by migration_v5_tuition_integrity.sql.
+-- Use supabase/recovery/ (reconciliation → preview → approved execute) instead.
 -- ============================================================
 -- TUITION HISTORY BACKFILL / INITIALIZATION
 -- ============================================================

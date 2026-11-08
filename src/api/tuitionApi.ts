@@ -51,6 +51,34 @@ function mapMonthSummary(row: Record<string, unknown>): TuitionMonthSummary {
   };
 }
 
+// ── pagination ───────────────────────────────────────────────────────────────
+// PostgREST (Supabase) מחזיר לכל היותר max_rows שורות (ברירת מחדל 1000) בלי שגיאה.
+// במערכת כבר יש יותר מ-1000 תנועות, ולכן שאילתה לא מוגבלת "מסתירה" תנועות
+// ממשתמש מורשה בשקט. כל שאילתה שעלולה לעבור את הסף עוברת דרך הפונקציה הזו.
+
+export const PAGE_SIZE = 1000;
+
+type PageResult = { data: unknown[] | null; error: { message: string } | null };
+
+/**
+ * מביא את כל העמודים. `buildPage(from, to)` חייב לבנות שאילתה חדשה בכל קריאה
+ * עם סדר דטרמיניסטי (order כולל מפתח ייחודי) ו-range(from, to).
+ */
+export async function fetchAllPages<T = Record<string, unknown>>(
+  buildPage: (from: number, to: number) => PromiseLike<PageResult>,
+  pageSize = PAGE_SIZE,
+): Promise<T[]> {
+  const all: T[] = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await buildPage(from, from + pageSize - 1);
+    if (error) throw new Error(error.message);
+    const rows = (data ?? []) as T[];
+    all.push(...rows);
+    if (rows.length < pageSize) break;
+  }
+  return all;
+}
+
 // ── public API ───────────────────────────────────────────────────────────────
 
 /** Current balance for a single student */
@@ -157,11 +185,14 @@ export async function deleteTransaction(id: string): Promise<void> {
 
 /** All balances — used by PaymentsPage overview */
 export async function getAllBalances(): Promise<TuitionBalance[]> {
-  const { data, error } = await supabase
-    .from('tuition_balances')
-    .select('*');
-  if (error) throw new Error(error.message);
-  return (data ?? []).map((r) => mapBalance(r as Record<string, unknown>));
+  const data = await fetchAllPages((from, to) =>
+    supabase
+      .from('tuition_balances')
+      .select('*')
+      .order('student_id', { ascending: true })
+      .range(from, to),
+  );
+  return data.map((r) => mapBalance(r as Record<string, unknown>));
 }
 
 /** Summarise all balances into counts + debt totals */
@@ -307,18 +338,20 @@ export async function getAllTransactions(opts?: {
   transactionType?: string;
   source?: string;
 }): Promise<TxWithPerson[]> {
-  let q = supabase
-    .from('tuition_transactions')
-    .select('*')
-    .order('transaction_date', { ascending: false })
-    .order('created_at', { ascending: false });
-  if (opts?.studentId)       q = q.eq('student_id', opts.studentId);
-  if (opts?.billingMonth)    q = q.eq('billing_month', opts.billingMonth);
-  if (opts?.currency)        q = q.eq('currency', opts.currency);
-  if (opts?.transactionType) q = q.eq('transaction_type', opts.transactionType as string);
-  if (opts?.source)          q = q.eq('source', opts.source);
-  const { data, error } = await q;
-  if (error) throw new Error(error.message);
+  const data = await fetchAllPages((from, to) => {
+    let q = supabase
+      .from('tuition_transactions')
+      .select('*')
+      .order('transaction_date', { ascending: false })
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: true });
+    if (opts?.studentId)       q = q.eq('student_id', opts.studentId);
+    if (opts?.billingMonth)    q = q.eq('billing_month', opts.billingMonth);
+    if (opts?.currency)        q = q.eq('currency', opts.currency);
+    if (opts?.transactionType) q = q.eq('transaction_type', opts.transactionType as string);
+    if (opts?.source)          q = q.eq('source', opts.source);
+    return q.range(from, to);
+  });
 
   const rows = (data ?? []).map((r) => mapTransaction(r as Record<string, unknown>));
   const [withAuditNames, names] = await Promise.all([
@@ -340,18 +373,29 @@ export async function getAllTransactions(opts?: {
  *  automatic/manual counts come from tuition_transactions. */
 export async function getMonthAggregates(): Promise<MonthAggregate[]> {
   // Two parallel fetches — no N+1, no source from the view
-  const [histRes, txRes] = await Promise.all([
-    supabase
-      .from('tuition_monthly_history')
-      .select('billing_month, charges, credits, currency')
-      .order('billing_month', { ascending: false }),
-    supabase
-      .from('tuition_transactions')
-      .select('billing_month, source'),
+  // Both sources can exceed PostgREST max_rows — paginate.
+  // Cancelled transactions are excluded from counts (the history view excludes them too).
+  const [histRows, txRows] = await Promise.all([
+    fetchAllPages((from, to) =>
+      supabase
+        .from('tuition_monthly_history')
+        .select('student_id, billing_month, charges, credits, currency')
+        .order('billing_month', { ascending: false })
+        .order('student_id', { ascending: true })
+        .order('currency', { ascending: true })
+        .range(from, to),
+    ),
+    fetchAllPages((from, to) =>
+      supabase
+        .from('tuition_transactions')
+        .select('id, billing_month, source')
+        .is('cancelled_at', null)
+        .order('id', { ascending: true })
+        .range(from, to),
+    ),
   ]);
-
-  if (histRes.error) throw new Error(histRes.error.message);
-  if (txRes.error)   throw new Error(txRes.error.message);
+  const histRes = { data: histRows };
+  const txRes = { data: txRows };
 
   // Build source counts per billing_month from tuition_transactions
   const sourceCounts = new Map<string, { automatic: number; manual: number }>();
@@ -436,4 +480,71 @@ export async function getMyProfile(): Promise<UserProfile | null> {
   if (error || !data) return null;
   const row = data as { id: string; display_name: string };
   return { id: row.id, displayName: row.display_name };
+}
+// ── automatic charge status (overview screen) ───────────────────────────────
+
+export type AutoChargeState = 'ok' | 'pending' | 'missing' | 'never';
+
+export interface AutoChargeStatus {
+  state: AutoChargeState;
+  lastBillingMonth: string | null;   // YYYY-MM-01 of the latest automatic monthly_charge
+  lastMonthCount: number;            // automatic monthly_charge rows in that month
+  prevMonthCount: number | null;     // same, for the month before (for drop detection)
+}
+
+function monthStart(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+}
+
+function shiftMonth(month: string, delta: number): string {
+  const [y, m] = month.split('-').map(Number);
+  return monthStart(new Date(y, m - 1 + delta, 1));
+}
+
+/**
+ * Pure: derive the state shown in the UI.
+ * The cron runs on the 21st at 02:00 UTC, so from the 22nd the current month must exist.
+ */
+export function deriveAutoChargeState(lastBillingMonth: string | null, today: Date): AutoChargeState {
+  if (!lastBillingMonth) return 'never';
+  const current = monthStart(today);
+  if (lastBillingMonth >= current) return 'ok';
+  const expectedPrev = shiftMonth(current, -1);
+  if (today.getDate() >= 22) return 'missing';
+  return lastBillingMonth >= expectedPrev ? 'pending' : 'missing';
+}
+
+async function countAutoCharges(month: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('tuition_transactions')
+    .select('id', { count: 'exact', head: true })
+    .eq('transaction_type', 'monthly_charge')
+    .eq('source', 'automatic')
+    .eq('billing_month', month)
+    .is('cancelled_at', null);
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
+export async function getAutoChargeStatus(today = new Date()): Promise<AutoChargeStatus> {
+  const { data, error } = await supabase
+    .from('tuition_transactions')
+    .select('billing_month')
+    .eq('transaction_type', 'monthly_charge')
+    .eq('source', 'automatic')
+    .order('billing_month', { ascending: false })
+    .limit(1);
+  if (error) throw new Error(error.message);
+  const last = data && data.length > 0 ? String((data[0] as { billing_month: string }).billing_month) : null;
+  if (!last) return { state: 'never', lastBillingMonth: null, lastMonthCount: 0, prevMonthCount: null };
+  const [lastCount, prevCount] = await Promise.all([
+    countAutoCharges(last),
+    countAutoCharges(shiftMonth(last, -1)),
+  ]);
+  return {
+    state: deriveAutoChargeState(last, today),
+    lastBillingMonth: last,
+    lastMonthCount: lastCount,
+    prevMonthCount: prevCount,
+  };
 }

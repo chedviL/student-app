@@ -55,8 +55,19 @@ function mapRow(row: Record<string, unknown>): Student {
 }
 
 // ממפה מ-TypeScript (camelCase) חזרה ל-Supabase (snake_case)
-function mapToRow(student: Partial<Student>): Record<string, unknown> {
-  return {
+//
+// ⚠️ חשוב — עדכון חלקי (PATCH):
+// שדה שלא נשלח (undefined) חייב להיות *מושמט* מהשורה, ולא להפוך ל-NULL.
+// בעבר היה כאן `tuition_start_date: student.tuitionStartDate ?? null`,
+// וכל עדכון חלקי (עריכה קבוצתית, עריכת שכ"ל במסך תשלומים וכו') מחק
+// את תאריך תחילת הגבייה — והתלמיד הפסיק לקבל חיוב חודשי.
+//
+// כללים:
+//   undefined → המפתח לא נשלח כלל (העמודה ב-DB לא משתנה)
+//   tuitionStartDate === "" → null (ניקוי מפורש מטופס שמציג את השדה;
+//     ה-DB חוסם ניקוי כזה למשתמשי האפליקציה — ראו migration v5)
+export function mapToRow(student: Partial<Student>): Record<string, unknown> {
+  const row: Record<string, unknown> = {
     first_name: student.firstName,
     last_name: student.lastName,
     full_name: student.fullName,
@@ -81,8 +92,12 @@ function mapToRow(student: Partial<Student>): Record<string, unknown> {
     tuition: student.tuition,
     tuition_rank: student.tuitionRank,
     tuition_currency: student.tuitionCurrency,
-    // send YYYY-MM-DD string or null — Postgres date column accepts ISO strings
-    tuition_start_date: student.tuitionStartDate ?? null,
+    tuition_start_date:
+      student.tuitionStartDate === undefined
+        ? undefined
+        : student.tuitionStartDate === ""
+          ? null
+          : student.tuitionStartDate,
     due_date_note: student.dueDateNote,
     payment_method: student.paymentMethod,
     payment_status_notes: student.paymentStatusNotes,
@@ -96,6 +111,11 @@ function mapToRow(student: Partial<Student>): Record<string, unknown> {
     religion: student.religion,
     religion_studies: student.religionStudies,
   };
+  // הסרת מפתחות undefined — הגנה מפורשת שאינה תלויה בהתנהגות JSON.stringify
+  for (const key of Object.keys(row)) {
+    if (row[key] === undefined) delete row[key];
+  }
+  return row;
 }
 
 // קריאת כל התלמידים
@@ -135,9 +155,13 @@ export async function createStudent(student: Omit<Student, "id">): Promise<Stude
 
 // עדכון תלמיד קיים
 export async function updateStudent(id: string, student: Partial<Student>): Promise<Student> {
+  const row = mapToRow(student);
+  if (Object.keys(row).length === 0) {
+    throw new Error("לא נשלחו שדות לעדכון");
+  }
   const { data, error } = await supabase
     .from("students")
-    .update(mapToRow(student))
+    .update(row)
     .eq("id", id)
     .select()
     .single();

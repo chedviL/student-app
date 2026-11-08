@@ -166,7 +166,7 @@ export async function graduateStudent(
     .single();
 
   if (fetchError || !studentData) {
-    throw new Error(fetchError?.message ?? "התלמיד לא נמצא");
+    throw new Error("התלמיד לא נמצא" + (fetchError?.message ? ` (${fetchError.message})` : ""));
   }
 
   const alumniRow = {
