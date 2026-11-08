@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { Search, Database, Home, Pencil, GraduationCap, CreditCard, LogOut, Sparkles } from "lucide-react";
+import { Search, Database, Home, Pencil, GraduationCap, CreditCard, LogOut, Sparkles, MessageSquareWarning } from "lucide-react";
 import logo from "../../assets/logo.png";
 import { useAuth } from "../../context/AuthContext";
 import { getMyProfile } from "../../api/tuitionApi";
@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { to: "/alumni",   label: "בוגרים",      icon: <GraduationCap size={16} />, end: false },
   { to: "/payments", label: "תשלומים",     icon: <CreditCard    size={16} />, end: false },
   { to: "/ai",       label: "עוזר AI",      icon: <Sparkles      size={16} />, end: false },
+  { to: "/feedback", label: "דיווח ושיפורים", icon: <MessageSquareWarning size={16} />, end: false },
 ];
 
 export default function Navbar() {

@@ -15,6 +15,8 @@ import LoginPage from "../pages/LoginPage";
 import SetPasswordPage from "../pages/SetPasswordPage";
 import MaintenancePage from "../pages/MaintenancePage";
 import AIAssistantPage from "../pages/AIAssistantPage";
+import FeedbackPage from "../pages/FeedbackPage";
+import FeedbackButton from "../components/common/FeedbackButton";
 import ProtectedRoute from "./ProtectedRoute";
 import { useAuth } from "../context/AuthContext";
 
@@ -48,6 +50,8 @@ function AnimatedRoutes() {
   }
 
   return (
+    <>
+    {session && <FeedbackButton />}
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         <Route path="/login" element={session ? <Navigate to="/" replace /> : <LoginPage />} />
@@ -104,9 +108,16 @@ function AnimatedRoutes() {
           </ProtectedRoute>
         } />
 
+        <Route path="/feedback" element={
+          <ProtectedRoute>
+            <motion.div {...pageTransition}><Navbar /><FeedbackPage /></motion.div>
+          </ProtectedRoute>
+        } />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AnimatePresence>
+    </>
   );
 }
 
