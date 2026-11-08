@@ -377,3 +377,16 @@ npm run test:db   # 143 בדיקות SQL על PostgreSQL מקומי זמני (ל
   * 0 בקשות ל-Supabase לפני כניסה. קודם נשלחה שאילתה אנונימית על students.
 * **השוואה מול הגיבוי:** 0 תאריכים נמחקו מאז הגיבוי.
 * **נדרש אימות ידני אחד:** מזכירה מתחברת ורואה את רשימות התלמידים והבוגרים. אין לי פרטי כניסה.
+
+## 16. Migration v6 בוצע בפרודקשן (08.11.2026)
+
+* **הרצה:** הלקוחה הריצה ב-SQL Editor את תוכן הקובץ (SHA256 ‏`fd7e4251…`), אחרי גיבוי מאומת מ-21:54 UTC. התוצאה: Success.
+* **מבנה (קריאה בלבד):**
+  * RLS פעיל על students.
+  * אין הרשאות anon ב-students, alumni, tuition_transactions ובשלושת ה-Views.
+  * 4 Policies ל-authenticated (read/insert/update/delete), ו-"allow anon insert" הוסר.
+  * `increment_student_ages` סגורה ל-anon ול-authenticated.
+* **רשת:**
+  * אנונימי מקבל 401 בקריאה של students, alumni ו-tuition_transactions, וגם ב-PATCH, ב-DELETE וב-RPC.
+  * משתמש מחובר רואה 274 תלמידים, 224 בוגרים ו-1,275 תנועות, כמו לפני ההרצה.
+* **נתונים:** זהים לגיבוי שלפני ההרצה בכל ארבע הטבלאות (checksum). 0 תאריכים נמחקו.
