@@ -621,6 +621,12 @@ $$;
 REVOKE ALL     ON FUNCTION public.tuition_health_check(date) FROM PUBLIC, anon;
 GRANT  EXECUTE ON FUNCTION public.tuition_health_check(date) TO authenticated, service_role;
 
+-- Hygiene: Supabase default privileges grant EXECUTE on new functions to anon.
+-- None of the v5 helpers is useful to anonymous callers.
+REVOKE EXECUTE ON FUNCTION public.tuition_amount(text)              FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.tuition_auto_credit_ranks()       FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.protect_tuition_start_date()      FROM PUBLIC, anon;
+
 COMMIT;
 
 -- ════════════════════════════════════════════════════════════
