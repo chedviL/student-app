@@ -94,19 +94,31 @@ export function StudentsProvider({ children }: { children: ReactNode }) {
   // worked while the table was readable anonymously; with RLS it returns nothing.
   const { user } = useAuth();
   const userId = user?.id ?? null;
-  const loadedForRef = useRef<string | null>(null);
+  // The user whose data this provider currently holds, and a sequence number for
+  // load requests. A response is applied only if it belongs to the LATEST request
+  // and that user is still logged in — a slow response started before a logout or
+  // an account switch can never repopulate another session's data.
+  const activeUserRef = useRef<string | null>(null);
+  const requestSeqRef = useRef(0);
 
   const refresh = useCallback(async () => {
+    const requestUser = activeUserRef.current;
+    if (!requestUser) return;                      // never query without a session
+    const seq = ++requestSeqRef.current;
+    const isCurrent = () =>
+      requestSeqRef.current === seq && activeUserRef.current === requestUser;
     try {
       setLoading(true);
       setError("");
       const data = await getStudents();
+      if (!isCurrent()) return;                    // stale: user changed / newer request
       setStudents(data);
       setLastUpdated(new Date());
     } catch (err) {
+      if (!isCurrent()) return;
       setError(err instanceof Error ? err.message : "שגיאה בטעינת נתונים");
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   }, []);
 
@@ -136,24 +148,30 @@ export function StudentsProvider({ children }: { children: ReactNode }) {
   // ── Initial load ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!userId) {
-      // logged out (or session not restored yet): never show another user's data
-      loadedForRef.current = null;
+      // logged out (or session not restored yet): drop data and invalidate any
+      // request still in flight
+      activeUserRef.current = null;
+      requestSeqRef.current++;
       setStudents([]);
+      setError("");
       return;
     }
-    if (loadedForRef.current === userId) return; // StrictMode double-run guard
-    loadedForRef.current = userId;
+    if (activeUserRef.current === userId) return; // StrictMode double-run guard
+    activeUserRef.current = userId;
     refresh();
   }, [userId, refresh]);
 
   // ── Supabase Realtime subscription ─────────────────────────────────────────
   useEffect(() => {
+    if (!userId) return;                         // no subscription without a session
+    const isCurrent = () => activeUserRef.current === userId;
     const channel = supabase
-      .channel("students-realtime")
+      .channel(`students-realtime-${userId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "students" },
         (payload) => {
+          if (!isCurrent()) return;               // event for a previous session
           const { eventType, new: newRow, old: oldRow } = payload;
 
           if (eventType === "INSERT") {
@@ -188,7 +206,7 @@ export function StudentsProvider({ children }: { children: ReactNode }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [userId]);
 
   return (
     <StudentsContext.Provider
