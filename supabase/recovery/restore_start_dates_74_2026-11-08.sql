@@ -1,3 +1,4 @@
+-- ⛔ SUPERSEDED (08.11.2026): the client decided ALL students get 2026-08-20 — use set_start_date_all_2026-11-08.sql instead. Do not run this file.
 -- שחזור 74 תאריכי תחילת גבייה ל-20.08.2026 (תלמידים שחויבו אוטומטית מאוגוסט 2026 ותאריכם נמחק)
 BEGIN;
 DO $$
