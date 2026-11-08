@@ -153,9 +153,9 @@ function StatCard({
   return (
     <motion.div
       className="db-stat-card"
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
+      transition={{ duration: 0.2 }}
     >
       <div className="db-stat-icon">{icon}</div>
       <div className="db-stat-value">{value}</div>
@@ -483,9 +483,8 @@ export default function DatabasePage() {
   return (
     <motion.div
       className="db-page with-navbar"
-      initial={{ opacity: 0 }}
+      initial={false}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.4 }}
     >
       <div className="db-shell">
 
@@ -666,7 +665,7 @@ export default function DatabasePage() {
             </div>
           </div>
         )}
-        {loading && <p className="search-state">טוען נתונים...</p>}
+        {loading && <p className="search-state is-loading" role="status">טוען נתונים...</p>}
         {error   && <p className="search-error">{error}</p>}
         {graduateSuccess && (
           <div style={{ textAlign: "center", padding: "10px 16px", background: "rgba(45,90,45,0.1)", border: "1px solid rgba(46,125,50,0.3)", borderRadius: 10, marginBottom: 12, color: "#1b5e20", fontWeight: 700, fontSize: 14 }}>

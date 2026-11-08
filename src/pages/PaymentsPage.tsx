@@ -39,9 +39,8 @@ export default function PaymentsPage() {
   return (
     <motion.div
       className="search-page with-navbar"
-      initial={{ opacity: 0 }}
+      initial={false}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
       style={{ direction: 'rtl' }}
     >
       <div className="search-shell" style={{ maxWidth: 1100 }}>

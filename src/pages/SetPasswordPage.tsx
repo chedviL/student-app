@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import logo from '../assets/logo.png';
+import logo from '../assets/logo.webp';
 
 export default function SetPasswordPage() {
   const { updatePassword } = useAuth();

@@ -20,11 +20,11 @@ function fmtDate(val: string | undefined): string {
 
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { delayChildren: 0.15, staggerChildren: 0.07 } },
+  visible: { opacity: 1, transition: { delayChildren: 0, staggerChildren: 0.03 } },
 };
 const itemVariants = {
   hidden: { y: 16, opacity: 0 },
-  visible: { y: 0, opacity: 1, transition: { duration: 0.35 } },
+  visible: { y: 0, opacity: 1, transition: { duration: 0.2 } },
 };
 
 type FieldDef = { key: keyof Alumni; label: string; type?: "text" | "email" | "tel" };
@@ -190,7 +190,7 @@ export default function AlumniCardPage() {
   return (
     <motion.div
       className="al-page with-navbar"
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}
+      initial={false} animate={{ opacity: 1 }}
       style={{ direction: "rtl" }}
     >
       <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 4px" }}>

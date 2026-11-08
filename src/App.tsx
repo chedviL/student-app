@@ -1,3 +1,4 @@
+import { MotionConfig } from "framer-motion";
 import AppRouter from "./router/AppRouter";
 import { StudentsProvider } from "./context/StudentsContext";
 import { AlumniProvider } from "./context/AlumniContext";
@@ -8,7 +9,10 @@ function App() {
     <AuthProvider>
       <StudentsProvider>
         <AlumniProvider>
-          <AppRouter />
+          {/* respects the OS "reduce motion" setting */}
+          <MotionConfig reducedMotion="user">
+            <AppRouter />
+          </MotionConfig>
         </AlumniProvider>
       </StudentsProvider>
     </AuthProvider>

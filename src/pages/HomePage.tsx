@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import "./HomePage.css";
-import logo from "../assets/logo.png";
+import logo from "../assets/logo.webp";
 
 import slide1 from "../images/optimized/044A1227.webp";
 import slide2 from "../images/optimized/044A1230.webp";
@@ -25,12 +25,17 @@ export default function HomePage() {
   const navigate = useNavigate();
   const [current, setCurrent] = useState(0);
 
-  // טוען מראש את כל תמונות הבית
+  // התמונה הראשונה נטענת מיד; את השאר טוענים ברקע רק אחרי שהדף מוכן,
+  // כדי שלא יתחרו על רוחב הפס עם הטעינה הראשונית
   useEffect(() => {
-    slides.forEach((src) => {
-      const img = new Image();
-      img.src = src;
-    });
+    const preload = () =>
+      slides.slice(1).forEach((src) => {
+        const img = new Image();
+        img.decoding = "async";
+        img.src = src;
+      });
+    const t = window.setTimeout(preload, 1200);
+    return () => window.clearTimeout(t);
   }, []);
 
   // כל תמונה מוצגת 5 שניות מלאות
@@ -50,7 +55,7 @@ export default function HomePage() {
     <div className="home-page with-navbar">
       {/* ── HERO ── */}
       <div className="home-hero">
-        <AnimatePresence mode="sync">
+        <AnimatePresence mode="sync" initial={false}>
           <motion.div
             key={current}
             className="home-hero-slide"
@@ -67,11 +72,11 @@ export default function HomePage() {
         {/* logo + title over image */}
         <motion.div
           className="home-hero-content"
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7 }}
+          transition={{ duration: 0.35 }}
         >
-          <img src={logo} alt="לוגו" className="home-hero-logo" />
+          <img src={logo} alt="לוגו" className="home-hero-logo" width={80} height={80} fetchPriority="high" />
           <h1 className="home-hero-title">ישיבה גדולה פני מנחם</h1>
           <p className="home-hero-sub">מערכת ניהול תלמידים</p>
           <div className="home-hero-divider" />
@@ -131,11 +136,11 @@ export default function HomePage() {
               type="button"
               className="home-card"
               onClick={() => navigate(card.path)}
-              initial={{ opacity: 0, y: 24 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{
-                delay: 0.2 + i * 0.12,
-                duration: 0.45,
+                delay: i * 0.04,
+                duration: 0.25,
               }}
               whileHover={{ y: -6 }}
               whileTap={{ scale: 0.97 }}

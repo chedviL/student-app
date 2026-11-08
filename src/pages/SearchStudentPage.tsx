@@ -31,19 +31,19 @@ const containerVariants = {
   visible: {
     opacity: 1,
     transition: {
-      delayChildren: 0.2,
-      staggerChildren: 0.1,
+      delayChildren: 0,
+      staggerChildren: 0.04,
     },
   },
 };
 
 const itemVariants = {
-  hidden: { y: 20, opacity: 0 },
+  hidden: { y: 10, opacity: 0 },
   visible: {
     y: 0,
     opacity: 1,
     transition: {
-      duration: 0.4,
+      duration: 0.22,
     },
   },
 };
@@ -98,9 +98,8 @@ export default function SearchStudentPage() {
   return (
     <motion.div
       className="search-page with-navbar"
-      initial={{ opacity: 0 }}
+      initial={false}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
     >
       <motion.div
         className="search-shell"
@@ -130,7 +129,7 @@ export default function SearchStudentPage() {
           )}
 
         {loading && (
-          <motion.p className="search-state" variants={itemVariants}>
+          <motion.p className="search-state is-loading" role="status" variants={itemVariants}>
             טוען תלמידים...
           </motion.p>
         )}

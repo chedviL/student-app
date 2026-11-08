@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { Search, Database, Home, Pencil, GraduationCap, CreditCard, LogOut, Sparkles } from "lucide-react";
-import logo from "../../assets/logo.png";
+import logo from "../../assets/logo.webp";
 import { useAuth } from "../../context/AuthContext";
 import { getMyProfile } from "../../api/tuitionApi";
 import "./Navbar.css";

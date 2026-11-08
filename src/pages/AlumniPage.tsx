@@ -138,9 +138,9 @@ function StatCard({
   return (
     <motion.div
       className="db-stat-card"
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
+      transition={{ duration: 0.2 }}
     >
       <div className="db-stat-icon">{icon}</div>
       <div className="db-stat-value">{value}</div>
@@ -355,9 +355,8 @@ export default function AlumniPage() {
   return (
     <motion.div
       className="al-page with-navbar"
-      initial={{ opacity: 0 }}
+      initial={false}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.4 }}
     >
       <div className="al-shell">
 
@@ -445,7 +444,7 @@ export default function AlumniPage() {
           </div>
         )}
 
-        {loading && <p className="search-state">טוען נתונים...</p>}
+        {loading && <p className="search-state is-loading" role="status">טוען נתונים...</p>}
         {error   && <p className="search-error">{error}</p>}
 
         {/* ── Table ── */}

@@ -1,32 +1,54 @@
-import { BrowserRouter, Route, Routes, useLocation, Navigate } from "react-router-dom";
-import { AnimatePresence, motion, type Transition } from "framer-motion";
-import { useEffect } from "react";
+import { BrowserRouter, Route, Routes, useLocation, Navigate, Outlet } from "react-router-dom";
+import { Suspense, lazy, useEffect } from "react";
 import Navbar from "../components/common/Navbar";
+import Loading, { Splash } from "../components/common/Loading";
 import HomePage from "../pages/HomePage";
-import SearchStudentPage from "../pages/SearchStudentPage";
-import DatabasePage from "../pages/DatabasePage";
-import StudentCardPage from "../pages/StudentCardPage";
-import EditPage from "../pages/EditPage";
-import AlumniPage from "../pages/AlumniPage";
-import AlumniCardPage from "../pages/AlumniCardPage";
-import TuitionPage from "../pages/TuitionPage";
-import PaymentsPage from "../pages/PaymentsPage";
 import LoginPage from "../pages/LoginPage";
-import SetPasswordPage from "../pages/SetPasswordPage";
-import MaintenancePage from "../pages/MaintenancePage";
-import AIAssistantPage from "../pages/AIAssistantPage";
 import ProtectedRoute from "./ProtectedRoute";
 import { useAuth } from "../context/AuthContext";
 
 const MAINTENANCE_MODE = false;
 
-const trans: Transition = { duration: 0.2, ease: "easeInOut" };
-const pageTransition = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1 },
-  exit: { opacity: 0 },
-  transition: trans,
+// ── Code-splitting ────────────────────────────────────────────────────────────
+// Home and Login are the first screens a user sees, so they stay in the main
+// bundle. Every other page is downloaded on demand — and prefetched while the
+// browser is idle right after login, so navigating still feels instant.
+const pageImports = {
+  search:      () => import("../pages/SearchStudentPage"),
+  database:    () => import("../pages/DatabasePage"),
+  edit:        () => import("../pages/EditPage"),
+  studentCard: () => import("../pages/StudentCardPage"),
+  tuition:     () => import("../pages/TuitionPage"),
+  alumni:      () => import("../pages/AlumniPage"),
+  alumniCard:  () => import("../pages/AlumniCardPage"),
+  payments:    () => import("../pages/PaymentsPage"),
+  ai:          () => import("../pages/AIAssistantPage"),
+  setPassword: () => import("../pages/SetPasswordPage"),
+  maintenance: () => import("../pages/MaintenancePage"),
 };
+
+const SearchStudentPage = lazy(pageImports.search);
+const DatabasePage      = lazy(pageImports.database);
+const EditPage          = lazy(pageImports.edit);
+const StudentCardPage   = lazy(pageImports.studentCard);
+const TuitionPage       = lazy(pageImports.tuition);
+const AlumniPage        = lazy(pageImports.alumni);
+const AlumniCardPage    = lazy(pageImports.alumniCard);
+const PaymentsPage      = lazy(pageImports.payments);
+const AIAssistantPage   = lazy(pageImports.ai);
+const SetPasswordPage   = lazy(pageImports.setPassword);
+const MaintenancePage   = lazy(pageImports.maintenance);
+
+function prefetchPages() {
+  const run = () => {
+    Object.entries(pageImports).forEach(([name, load]) => {
+      if (name !== "maintenance") load().catch(() => {});
+    });
+  };
+  const w = window as Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number };
+  if (w.requestIdleCallback) w.requestIdleCallback(run, { timeout: 3000 });
+  else window.setTimeout(run, 1500);
+}
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -36,89 +58,90 @@ function ScrollToTop() {
   return null;
 }
 
-function AnimatedRoutes() {
-  const location = useLocation();
+/**
+ * Shell for every logged-in page. The Navbar lives here, OUTSIDE the page, so it
+ * is mounted once and never flickers or re-fetches on navigation. While a page's
+ * code is downloading only the content area shows a loader.
+ */
+function AppLayout() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    prefetchPages();
+  }, []);
+
+  return (
+    <ProtectedRoute>
+      <Navbar />
+      <Suspense fallback={<Loading />}>
+        {/* keyed fade-in: new page appears immediately, no waiting for an exit animation */}
+        <div key={pathname} className="page-fade">
+          <Outlet />
+        </div>
+      </Suspense>
+    </ProtectedRoute>
+  );
+}
+
+function AppRoutes() {
   const { session, loading } = useAuth();
 
-  if (loading) return null;
+  if (loading) return <Splash />;
 
   const hash = window.location.hash;
-  if (session && hash.includes('type=invite')) {
-    return <SetPasswordPage />;
+  if (session && hash.includes("type=invite")) {
+    return (
+      <Suspense fallback={<Splash />}>
+        <SetPasswordPage />
+      </Suspense>
+    );
   }
 
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
-        <Route path="/login" element={session ? <Navigate to="/" replace /> : <LoginPage />} />
-        <Route path="/set-password" element={session ? <SetPasswordPage /> : <Navigate to="/login" replace />} />
+    <Routes>
+      <Route path="/login" element={session ? <Navigate to="/" replace /> : <LoginPage />} />
+      <Route
+        path="/set-password"
+        element={
+          session ? (
+            <Suspense fallback={<Splash />}><SetPasswordPage /></Suspense>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
 
-        <Route path="/" element={
-          <ProtectedRoute>
-            <motion.div {...pageTransition}><Navbar /><HomePage /></motion.div>
-          </ProtectedRoute>
-        } />
-        <Route path="/search" element={
-          <ProtectedRoute>
-            <motion.div {...pageTransition}><Navbar /><SearchStudentPage /></motion.div>
-          </ProtectedRoute>
-        } />
-        <Route path="/database" element={
-          <ProtectedRoute>
-            <motion.div {...pageTransition}><Navbar /><DatabasePage /></motion.div>
-          </ProtectedRoute>
-        } />
-        <Route path="/edit" element={
-          <ProtectedRoute>
-            <motion.div {...pageTransition}><Navbar /><EditPage /></motion.div>
-          </ProtectedRoute>
-        } />
-        <Route path="/student/:studentId" element={
-          <ProtectedRoute>
-            <motion.div {...pageTransition}><Navbar /><StudentCardPage /></motion.div>
-          </ProtectedRoute>
-        } />
-        <Route path="/student/:studentId/tuition" element={
-          <ProtectedRoute>
-            <motion.div {...pageTransition}><Navbar /><TuitionPage /></motion.div>
-          </ProtectedRoute>
-        } />
-        <Route path="/alumni" element={
-          <ProtectedRoute>
-            <motion.div {...pageTransition}><Navbar /><AlumniPage /></motion.div>
-          </ProtectedRoute>
-        } />
-        <Route path="/alumni/:alumniId" element={
-          <ProtectedRoute>
-            <motion.div {...pageTransition}><Navbar /><AlumniCardPage /></motion.div>
-          </ProtectedRoute>
-        } />
-        <Route path="/payments" element={
-          <ProtectedRoute>
-            <motion.div {...pageTransition}><Navbar /><PaymentsPage /></motion.div>
-          </ProtectedRoute>
-        } />
-        <Route path="/ai" element={
-          <ProtectedRoute>
-            <motion.div {...pageTransition}><Navbar /><AIAssistantPage /></motion.div>
-          </ProtectedRoute>
-        } />
+      <Route element={<AppLayout />}>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/search" element={<SearchStudentPage />} />
+        <Route path="/database" element={<DatabasePage />} />
+        <Route path="/edit" element={<EditPage />} />
+        <Route path="/student/:studentId" element={<StudentCardPage />} />
+        <Route path="/student/:studentId/tuition" element={<TuitionPage />} />
+        <Route path="/alumni" element={<AlumniPage />} />
+        <Route path="/alumni/:alumniId" element={<AlumniCardPage />} />
+        <Route path="/payments" element={<PaymentsPage />} />
+        <Route path="/ai" element={<AIAssistantPage />} />
+      </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </AnimatePresence>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 
 export default function AppRouter() {
   if (MAINTENANCE_MODE) {
-    return <MaintenancePage />;
+    return (
+      <Suspense fallback={<Splash />}>
+        <MaintenancePage />
+      </Suspense>
+    );
   }
 
   return (
     <BrowserRouter>
       <ScrollToTop />
-      <AnimatedRoutes />
+      <AppRoutes />
     </BrowserRouter>
   );
 }

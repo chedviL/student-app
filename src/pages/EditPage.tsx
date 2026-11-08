@@ -180,7 +180,7 @@ function StudentPicker({
           />
         </div>
       </div>
-      {loading && <p className="search-state">טוען...</p>}
+      {loading && <p className="search-state is-loading" role="status">טוען...</p>}
       {!loading && normalize(query).length >= 2 && results.length === 0 && (
         <p className="search-state">לא נמצאו תוצאות</p>
       )}
@@ -662,9 +662,8 @@ export default function EditPage() {
   return (
     <motion.div
       className="search-page with-navbar"
-      initial={{ opacity: 0 }}
+      initial={false}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.4 }}
     >
       <div className="search-shell">
 

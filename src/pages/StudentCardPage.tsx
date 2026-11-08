@@ -36,11 +36,11 @@ function fmtDate(val: string | undefined): string {
 
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { delayChildren: 0.15, staggerChildren: 0.07 } },
+  visible: { opacity: 1, transition: { delayChildren: 0, staggerChildren: 0.03 } },
 };
 const itemVariants = {
   hidden: { y: 16, opacity: 0 },
-  visible: { y: 0, opacity: 1, transition: { duration: 0.35 } },
+  visible: { y: 0, opacity: 1, transition: { duration: 0.2 } },
 };
 
 // ─── field definitions ────────────────────────────────────────────────────────
@@ -225,7 +225,7 @@ export default function StudentCardPage() {
     return (
       <div className="search-page with-navbar">
         <div className="search-shell">
-          <p className="search-state">טוען כרטיס תלמיד...</p>
+          <p className="search-state is-loading" role="status">טוען כרטיס תלמיד...</p>
         </div>
       </div>
     );
@@ -258,9 +258,8 @@ export default function StudentCardPage() {
   return (
     <motion.div
       className="search-page with-navbar"
-      initial={{ opacity: 0 }}
+      initial={false}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.4 }}
     >
       {/* ── Graduate confirm modal ── */}
       {graduateConfirm && (
