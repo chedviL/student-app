@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { Search, Database, Home, Pencil, GraduationCap, CreditCard, LogOut, Sparkles } from "lucide-react";
+import { Search, Database, Home, Pencil, GraduationCap, CreditCard, LogOut, Sparkles, MessageSquareWarning } from "lucide-react";
 import logo from "../../assets/logo.webp";
 import { useAuth } from "../../context/AuthContext";
 import { useDialog } from "../../hooks/useDialog";
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { to: "/alumni",   label: "בוגרים",      icon: <GraduationCap size={16} />, end: false },
   { to: "/payments", label: "תשלומים",     icon: <CreditCard    size={16} />, end: false },
   { to: "/ai",       label: "עוזר AI",      icon: <Sparkles      size={16} />, end: false },
+  { to: "/feedback", label: "דיווח ושיפורים", icon: <MessageSquareWarning size={16} />, end: false, compact: true },
 ];
 
 export default function Navbar() {
@@ -53,9 +54,14 @@ export default function Navbar() {
         <ul className="navbar-links">
           {NAV_ITEMS.map((item) => (
             <li key={item.to}>
-              <NavLink to={item.to} end={item.end} className={({ isActive: ia }) => "navbar-link" + (ia ? " active" : "")}>
+              <NavLink
+                to={item.to}
+                end={item.end}
+                className={({ isActive: ia }) => "navbar-link" + (item.compact ? " navbar-link-compact" : "") + (ia ? " active" : "")}
+                title={item.compact ? item.label : undefined}
+              >
                 {item.icon}
-                {item.label}
+                <span className="navbar-link-label">{item.label}</span>
               </NavLink>
             </li>
           ))}

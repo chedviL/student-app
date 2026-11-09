@@ -441,7 +441,7 @@
    Tablet
 ========================================== */
 
-@media (max-width: 950px) and (min-width: 701px) {
+@media (max-width: 1150px) and (min-width: 1025px) {
   .navbar {
     padding: 0 18px;
   }
@@ -476,7 +476,7 @@
    Mobile
 ========================================== */
 
-@media (max-width: 700px) {
+@media (max-width: 1024px) {
   .navbar {
     padding: 0 16px;
   }
@@ -532,5 +532,27 @@
 
   .navbar-drawer {
     animation: none;
+  }
+}
+
+/* On mid-size screens the feedback item shows only its icon, so the menu doesn't crowd */
+@media (max-width: 1260px) and (min-width: 1025px) {
+  .navbar-links .navbar-link-compact .navbar-link-label {
+    display: none;
+  }
+}
+
+@media (max-width: 1260px) and (min-width: 1151px) {
+  .navbar-link {
+    padding: 7px 10px;
+    gap: 4px;
+  }
+}
+
+/* Tablets: keep the user area next to the menu button instead of floating mid-bar */
+@media (max-width: 1024px) and (min-width: 701px) {
+  .navbar-user {
+    margin-inline-start: auto;
+    margin-inline-end: 12px;
   }
 }

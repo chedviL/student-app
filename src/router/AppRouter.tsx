@@ -23,6 +23,7 @@ const pageImports = {
   alumniCard:  () => import("../pages/AlumniCardPage"),
   payments:    () => import("../pages/PaymentsPage"),
   ai:          () => import("../pages/AIAssistantPage"),
+  feedback:    () => import("../pages/FeedbackPage"),
   setPassword: () => import("../pages/SetPasswordPage"),
   maintenance: () => import("../pages/MaintenancePage"),
 };
@@ -36,6 +37,7 @@ const AlumniPage        = lazy(pageImports.alumni);
 const AlumniCardPage    = lazy(pageImports.alumniCard);
 const PaymentsPage      = lazy(pageImports.payments);
 const AIAssistantPage   = lazy(pageImports.ai);
+const FeedbackPage      = lazy(pageImports.feedback);
 const SetPasswordPage   = lazy(pageImports.setPassword);
 const MaintenancePage   = lazy(pageImports.maintenance);
 
@@ -207,6 +209,7 @@ function AppRoutes() {
         <Route path="/alumni/:alumniId" element={<AlumniCardPage />} />
         <Route path="/payments" element={<PaymentsPage />} />
         <Route path="/ai" element={<AIAssistantPage />} />
+        <Route path="/feedback" element={<FeedbackPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
