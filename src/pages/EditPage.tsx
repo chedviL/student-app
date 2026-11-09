@@ -8,6 +8,9 @@ import {
 } from "lucide-react";
 import { useStudents } from "../context/StudentsContext";
 import { updateStudent } from "../api/studentsApi";
+import { describeBulkStartDateChange } from "../constants/tuitionPolicy";
+import type { StartDateChangeGroup } from "../constants/tuitionPolicy";
+import StartDateChangeDialog from "../components/tuition/StartDateChangeDialog";
 import type { Student } from "../types/student";
 import "./EditPage.css";
 
@@ -297,6 +300,9 @@ export function EditForm({
     return applyOp(student[key] as string, op);
   }
 
+  // Start-date changes need an explicit confirmation that explains the consequences.
+  const [dateConfirm, setDateConfirm] = useState<StartDateChangeGroup[] | null>(null);
+
   async function save() {
     // check at least one field has a value
     const hasChange = sec.fields.some((f) => {
@@ -307,6 +313,25 @@ export function EditForm({
       setFeedback({ type: "error", msg: "לא בוצעו שינויים" });
       return;
     }
+    if (sec.fields.some((f) => f.key === "tuitionStartDate")) {
+      const affected = students.filter((st) => {
+        const v = resolveValue("tuitionStartDate", st);
+        return v !== undefined && v !== (st.tuitionStartDate ?? "");
+      });
+      if (affected.length > 0) {
+        // consequences for EVERY distinct current date among the affected students
+        setDateConfirm(describeBulkStartDateChange(
+          affected.map((st) => st.tuitionStartDate),
+          resolveValue("tuitionStartDate", affected[0]),
+        ));
+        return;
+      }
+    }
+    await doSave();
+  }
+
+  async function doSave() {
+    setDateConfirm(null);
     setSaving(true);
     setFeedback(null);
     try {
@@ -344,6 +369,14 @@ export function EditForm({
 
   return (
     <div className="edit-form-wrap">
+      {dateConfirm && (
+        <StartDateChangeDialog
+          groups={dateConfirm}
+          busy={saving}
+          onConfirm={doSave}
+          onCancel={() => setDateConfirm(null)}
+        />
+      )}
       {isBulk && (
         <div className="edit-bulk-info">
           <Users size={16} />
