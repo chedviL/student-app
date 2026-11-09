@@ -255,16 +255,45 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  gap: 10px;
 
   flex-shrink: 0;
 
   overflow: hidden;
 }
 
+/* Logout — matches the dark navbar (its styling was lost in an earlier refactor,
+   so it rendered as a plain white browser button stuck to the username) */
+.navbar-logout {
+  flex-shrink: 0;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 32px;
+  height: 32px;
+  padding: 0;
+
+  border-radius: 9px;
+  border: 1px solid rgba(247, 214, 152, 0.28);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 240, 200, 0.75);
+
+  cursor: pointer;
+}
+
+.navbar-logout:hover {
+  color: #ffe9b8;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(247, 214, 152, 0.5);
+}
+
 .navbar-username {
   display: block;
 
-  width: 100%;
+  width: auto;
+  min-width: 0;
 
   font-size: 13px;
   font-weight: 700;
