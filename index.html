@@ -1,19 +1,42 @@
 <!doctype html>
-<html lang="en">
+<html lang="he" dir="rtl">
   <head>
     <meta charset="UTF-8" />
-<link rel="icon" type="image/jpeg" href="/src/images/לוגו ישיבת פני מנחם-01 - ללא רקע-01חדש.png" />
-
-
-    <meta name="viewport" content="width=
-    , initial-scale=1.0" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@700;900&display=swap" rel="stylesheet" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#6c3b23" />
+    <link rel="icon" type="image/png" href="/favicon-64.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>ניהול תלמידים</title>
+    <!--
+      Inline splash: painted instantly, before any JavaScript downloads.
+      React replaces it with the same-looking <Splash /> so there is no flash.
+    -->
+    <style>
+      html, body { margin: 0; background: #f7efe0; }
+      .app-splash {
+        position: fixed; inset: 0; z-index: 2000;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+        background: radial-gradient(circle at top center, rgba(255,244,219,0.95), transparent 34%),
+                    linear-gradient(180deg, #fbf6eb 0%, #f3e6cd 100%);
+        font-family: "Segoe UI", Arial, sans-serif; color: #6c3b23; direction: rtl;
+      }
+      .app-splash-title { font-size: 20px; font-weight: 700; letter-spacing: .3px; }
+      .app-splash-spinner {
+        width: 34px; height: 34px; border-radius: 50%;
+        border: 3px solid rgba(200,134,63,0.22); border-top-color: #c8863f;
+        animation: app-splash-spin .8s linear infinite;
+      }
+      @keyframes app-splash-spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) { .app-splash-spinner { animation-duration: 2.4s; } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="app-splash" role="status" aria-live="polite">
+        <div class="app-splash-title">ישיבה גדולה פני מנחם</div>
+        <div class="app-splash-spinner"></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

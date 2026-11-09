@@ -14,7 +14,7 @@ const INPUT_DIR  = join(__dirname, '../src/images');
 const OUTPUT_DIR = join(__dirname, '../src/images/optimized');
 
 const TARGET_WIDTH = 1920;   // px – carousel is never wider than this
-const QUALITY      = 82;     // WebP quality (0-100); 82 gives excellent visual quality
+const QUALITY      = 68;     // WebP quality; hero sits under a dark overlay, so 68 looks identical and is ~33% smaller
 
 await mkdir(OUTPUT_DIR, { recursive: true });
 

@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { Search, Database, Home, Pencil, GraduationCap, CreditCard, LogOut, Sparkles, MessageSquareWarning } from "lucide-react";
-import logo from "../../assets/logo.png";
+import logo from "../../assets/logo.webp";
 import { useAuth } from "../../context/AuthContext";
+import { useDialog } from "../../hooks/useDialog";
 import { getMyProfile } from "../../api/tuitionApi";
 import "./Navbar.css";
 
@@ -22,6 +23,8 @@ export default function Navbar() {
   const [displayName, setDisplayName] = useState('');
   const location = useLocation();
   const { signOut } = useAuth();
+  // Escape closes, focus moves into the menu, page behind does not scroll
+  const drawerRef = useDialog<HTMLDivElement>(() => setOpen(false), open);
 
   useEffect(() => {
     getMyProfile().then((p) => { if (p) setDisplayName(p.displayName); }).catch(() => {});
@@ -75,13 +78,22 @@ export default function Navbar() {
           </button>
         </div>
 
-        <button className={`navbar-hamburger${open ? " open" : ""}`} onClick={() => setOpen((o) => !o)} aria-label="תפריט ניווט">
+        <button
+          className={`navbar-hamburger${open ? " open" : ""}`}
+          onClick={() => setOpen((o) => !o)}
+          aria-label={open ? "סגירת תפריט" : "תפריט ניווט"}
+          aria-expanded={open}
+          aria-controls="navbar-drawer"
+        >
           <span /><span /><span />
         </button>
       </nav>
 
       {open && (
-        <div className="navbar-drawer">
+        <div className="navbar-drawer-backdrop" onClick={() => setOpen(false)} aria-hidden="true" />
+      )}
+      {open && (
+        <div className="navbar-drawer" id="navbar-drawer" ref={drawerRef} aria-label="תפריט ניווט">
           {NAV_ITEMS.map((item) => (
             <NavLink key={item.to} to={item.to} end={item.end} className={isActive(item.to, item.end ?? false) ? "navbar-link active" : "navbar-link"} onClick={() => setOpen(false)}>
               {item.icon}

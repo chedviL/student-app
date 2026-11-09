@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { Pencil, X, Check, Loader2, ChevronLeft } from "lucide-react";
 import { useAlumni } from "../context/AlumniContext";
 import { updateAlumnus } from "../api/alumniApi";
@@ -9,6 +9,9 @@ import { useStudentTuition } from "../hooks/useStudentTuition";
 import { TuitionModal } from "../components/tuition/TuitionModal";
 import { formatDate } from "../utils/dateHelpers";
 import "./AlumniPage.css";
+import { useGoBack } from '../hooks/useGoBack';
+import { useToast } from "../context/ToastContext";
+import { SkeletonProfile } from "../components/common/Skeleton";
 
 function fmtDate(val: string | undefined): string {
   if (!val) return "";
@@ -20,11 +23,11 @@ function fmtDate(val: string | undefined): string {
 
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { delayChildren: 0.15, staggerChildren: 0.07 } },
+  visible: { opacity: 1, transition: { delayChildren: 0, staggerChildren: 0.03 } },
 };
 const itemVariants = {
   hidden: { y: 16, opacity: 0 },
-  visible: { y: 0, opacity: 1, transition: { duration: 0.35 } },
+  visible: { y: 0, opacity: 1, transition: { duration: 0.2 } },
 };
 
 type FieldDef = { key: keyof Alumni; label: string; type?: "text" | "email" | "tel" };
@@ -95,7 +98,7 @@ const inputStyle: React.CSSProperties = {
 /* ─── main component ────────────────────────────────────────── */
 export default function AlumniCardPage() {
   const { alumniId } = useParams();
-  const navigate     = useNavigate();
+  const goBack = useGoBack("/alumni");
   const { alumni, loading, error, updateLocal } = useAlumni();
 
   const [copied, setCopied]           = useState<string | null>(null);
@@ -103,7 +106,7 @@ export default function AlumniCardPage() {
   const [draft, setDraft]             = useState<Partial<Alumni>>({});
   const [saving, setSaving]           = useState(false);
   const [saveError, setSaveError]     = useState("");
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const toast = useToast();
   const [showTuition, setShowTuition] = useState(false);
 
   const alumnus = useMemo(
@@ -141,7 +144,6 @@ export default function AlumniCardPage() {
     if (!alumnus) return;
     setDraft({ ...alumnus });
     setSaveError("");
-    setSaveSuccess(false);
     setEditMode(true);
   }
 
@@ -154,10 +156,9 @@ export default function AlumniCardPage() {
     try {
       const saved = await updateAlumnus(alumnus.id, draft);
       updateLocal(saved);
-      setSaveSuccess(true);
+      toast.success("הנתונים נשמרו בהצלחה");
       setEditMode(false);
       setDraft({});
-      setTimeout(() => setSaveSuccess(false), 2500);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "שגיאה בשמירה");
     } finally {
@@ -167,22 +168,22 @@ export default function AlumniCardPage() {
 
   /* ── states ── */
   if (loading) return (
-    <div className="al-page with-navbar" style={{ display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <Loader2 size={32} style={{ color: "#64748b", animation: "spin 1s linear infinite" }} />
+    <div className="al-page with-navbar" style={{ padding: "84px 18px 40px" }}>
+      <SkeletonProfile label="טוען כרטיס בוגר..." />
     </div>
   );
 
   if (error) return (
     <div className="al-page with-navbar" style={{ display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:16 }}>
       <p style={{ color: "#fca5a5" }}>{error}</p>
-      <button onClick={() => navigate(-1)} style={{ ...inputStyle, width:"auto", cursor:"pointer" }}>חזרה</button>
+      <button onClick={goBack} style={{ ...inputStyle, width:"auto", cursor:"pointer" }}>חזרה</button>
     </div>
   );
 
   if (!alumnus) return (
     <div className="al-page with-navbar" style={{ display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:16 }}>
       <p style={{ color: "#cbd5e1" }}>הבוגר לא נמצא</p>
-      <button onClick={() => navigate(-1)} style={{ ...inputStyle, width:"auto", cursor:"pointer" }}>חזרה</button>
+      <button onClick={goBack} style={{ ...inputStyle, width:"auto", cursor:"pointer" }}>חזרה</button>
     </div>
   );
 
@@ -190,7 +191,7 @@ export default function AlumniCardPage() {
   return (
     <motion.div
       className="al-page with-navbar"
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}
+      initial={false} animate={{ opacity: 1 }}
       style={{ direction: "rtl" }}
     >
       <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 4px" }}>
@@ -200,7 +201,7 @@ export default function AlumniCardPage() {
           <motion.div variants={itemVariants}
             style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom: 20 }}>
             <button
-              onClick={() => navigate(-1)}
+              onClick={goBack}
               style={{ display:"flex", alignItems:"center", gap:6, background:"transparent",
                 border:"1px solid rgba(148,163,184,0.25)", borderRadius:10, padding:"7px 14px",
                 color:"#94a3b8", fontSize:14, fontWeight:700, cursor:"pointer" }}>
@@ -277,13 +278,14 @@ export default function AlumniCardPage() {
 
           {/* ── Feedback ── */}
           <AnimatePresence>
-            {(saveSuccess || saveError) && (
+            {saveError && (
               <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+                role="alert"
                 style={{ marginBottom:14, padding:"10px 14px", borderRadius:10, fontWeight:700, fontSize:14,
-                  background: saveSuccess ? "rgba(15,50,30,0.7)" : "rgba(60,15,15,0.7)",
-                  border: saveSuccess ? "1px solid rgba(50,150,90,0.35)" : "1px solid rgba(180,50,50,0.35)",
-                  color: saveSuccess ? "#6ee7b7" : "#fca5a5" }}>
-                {saveSuccess ? "✔ הנתונים נשמרו בהצלחה" : `✖ ${saveError}`}
+                  background: "rgba(60,15,15,0.7)",
+                  border: "1px solid rgba(180,50,50,0.35)",
+                  color: "#fca5a5" }}>
+                {`✖ ${saveError}`}
               </motion.div>
             )}
           </AnimatePresence>
@@ -345,7 +347,7 @@ export default function AlumniCardPage() {
             {/* כפתור חזרה */}
             <motion.div variants={itemVariants}
               style={{ ...cellStyle, padding:0, overflow:"hidden", minHeight:72 }}>
-              <button onClick={() => navigate(-1)}
+              <button onClick={goBack}
                 style={{ width:"100%", height:"100%", minHeight:72, background:"linear-gradient(180deg,#334155,#1e293b)",
                   border:"none", borderRadius:12, color:"#94a3b8", fontSize:16, fontWeight:800,
                   cursor:"pointer", transition:"transform 0.15s" }}>

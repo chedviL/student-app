@@ -18,80 +18,80 @@ const COLS: ExportColDef[] = [
 ];
 
 describe('exportToExcel', () => {
-  it('creates workbook and calls writeFile', () => {
-    exportToExcel([{ name: 'ישראל', date: '2026-08-01', amountILS: '700', amountUSD: '', num: '5' }], COLS, 'Sheet1', 'test.xlsx');
+  it('creates workbook and calls writeFile', async () => {
+    await exportToExcel([{ name: 'ישראל', date: '2026-08-01', amountILS: '700', amountUSD: '', num: '5' }], COLS, 'Sheet1', 'test.xlsx');
     expect(XLSX.writeFile).toHaveBeenCalledWith(expect.anything(), 'test.xlsx');
   });
 
-  it('sets RTL on workbook', () => {
+  it('sets RTL on workbook', async () => {
     let capturedWb: XLSX.WorkBook | undefined;
     vi.mocked(XLSX.writeFile).mockImplementationOnce((wb) => { capturedWb = wb as XLSX.WorkBook; });
-    exportToExcel([{ name: 'test' }], [{ key: 'name', label: 'שם' }], 'S', 'f.xlsx');
+    await exportToExcel([{ name: 'test' }], [{ key: 'name', label: 'שם' }], 'S', 'f.xlsx');
     expect(capturedWb?.Workbook?.Views?.[0]?.RTL).toBe(true);
   });
 
-  it('sets autofilter', () => {
+  it('sets autofilter', async () => {
     let capturedWb: XLSX.WorkBook | undefined;
     vi.mocked(XLSX.writeFile).mockImplementationOnce((wb) => { capturedWb = wb as XLSX.WorkBook; });
-    exportToExcel([{ name: 'test' }], [{ key: 'name', label: 'שם' }], 'S', 'f.xlsx');
+    await exportToExcel([{ name: 'test' }], [{ key: 'name', label: 'שם' }], 'S', 'f.xlsx');
     const ws = capturedWb?.Sheets?.['S'];
     expect(ws?.['!autofilter']).toBeDefined();
   });
 
-  it('sets column widths', () => {
+  it('sets column widths', async () => {
     let capturedWb: XLSX.WorkBook | undefined;
     vi.mocked(XLSX.writeFile).mockImplementationOnce((wb) => { capturedWb = wb as XLSX.WorkBook; });
-    exportToExcel([{ name: 'test' }], [{ key: 'name', label: 'שם' }], 'S', 'f.xlsx');
+    await exportToExcel([{ name: 'test' }], [{ key: 'name', label: 'שם' }], 'S', 'f.xlsx');
     const ws = capturedWb?.Sheets?.['S'];
     expect(ws?.['!cols']).toBeDefined();
     expect((ws?.['!cols'] as XLSX.ColInfo[]).length).toBe(1);
   });
 
-  it('formats date YYYY-MM-DD → DD.MM.YYYY', () => {
+  it('formats date YYYY-MM-DD → DD.MM.YYYY', async () => {
     let capturedWb: XLSX.WorkBook | undefined;
     vi.mocked(XLSX.writeFile).mockImplementationOnce((wb) => { capturedWb = wb as XLSX.WorkBook; });
-    exportToExcel([{ d: '2026-08-01' }], [{ key: 'd', label: 'תאריך', type: 'date' }], 'S', 'f.xlsx');
+    await exportToExcel([{ d: '2026-08-01' }], [{ key: 'd', label: 'תאריך', type: 'date' }], 'S', 'f.xlsx');
     const ws = capturedWb?.Sheets?.['S'];
     const cell = ws?.['A2'];
     expect(cell?.v).toBe('01.08.2026');
   });
 
-  it('formats ILS currency', () => {
+  it('formats ILS currency', async () => {
     let capturedWb: XLSX.WorkBook | undefined;
     vi.mocked(XLSX.writeFile).mockImplementationOnce((wb) => { capturedWb = wb as XLSX.WorkBook; });
-    exportToExcel([{ a: '700' }], [{ key: 'a', label: 'סכום', type: 'currency_ils' }], 'S', 'f.xlsx');
+    await exportToExcel([{ a: '700' }], [{ key: 'a', label: 'סכום', type: 'currency_ils' }], 'S', 'f.xlsx');
     const ws = capturedWb?.Sheets?.['S'];
     expect(String(ws?.['A2']?.v)).toContain('₪');
   });
 
-  it('formats USD currency', () => {
+  it('formats USD currency', async () => {
     let capturedWb: XLSX.WorkBook | undefined;
     vi.mocked(XLSX.writeFile).mockImplementationOnce((wb) => { capturedWb = wb as XLSX.WorkBook; });
-    exportToExcel([{ a: '700' }], [{ key: 'a', label: 'סכום', type: 'currency_usd' }], 'S', 'f.xlsx');
+    await exportToExcel([{ a: '700' }], [{ key: 'a', label: 'סכום', type: 'currency_usd' }], 'S', 'f.xlsx');
     const ws = capturedWb?.Sheets?.['S'];
     expect(String(ws?.['A2']?.v)).toContain('$');
   });
 
-  it('handles null/undefined values gracefully', () => {
-    expect(() =>
+  it('handles null/undefined values gracefully', async () => {
+    await expect(
       exportToExcel([{ name: null, date: undefined }], COLS, 'S', 'f.xlsx')
-    ).not.toThrow();
+    ).resolves.toBeUndefined();
   });
 
-  it('handles empty dataset', () => {
+  it('handles empty dataset', async () => {
     expect(() => exportToExcel([], COLS, 'S', 'f.xlsx')).not.toThrow();
   });
 
-  it('writes correct headers', () => {
+  it('writes correct headers', async () => {
     let capturedWb: XLSX.WorkBook | undefined;
     vi.mocked(XLSX.writeFile).mockImplementationOnce((wb) => { capturedWb = wb as XLSX.WorkBook; });
-    exportToExcel([], [{ key: 'x', label: 'כותרת' }], 'S', 'f.xlsx');
+    await exportToExcel([], [{ key: 'x', label: 'כותרת' }], 'S', 'f.xlsx');
     const ws = capturedWb?.Sheets?.['S'];
     expect(ws?.['A1']?.v).toBe('כותרת');
   });
 
   // REGRESSION: tuitionStartDate must NOT appear in export
-  it('does not include tuitionStartDate column', () => {
+  it('does not include tuitionStartDate column', async () => {
     const cols: ExportColDef[] = [
       { key: 'name', label: 'שם' },
       { key: 'city', label: 'עיר' },
@@ -104,11 +104,11 @@ describe('exportToExcel', () => {
 });
 
 describe('todayStr', () => {
-  it('returns a non-empty string', () => {
+  it('returns a non-empty string', async () => {
     expect(todayStr().length).toBeGreaterThan(0);
   });
 
-  it('contains digits', () => {
+  it('contains digits', async () => {
     expect(todayStr()).toMatch(/\d/);
   });
 });

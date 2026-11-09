@@ -12,6 +12,10 @@ import { useStudentTuition } from "../hooks/useStudentTuition";
 import { TuitionModal } from "../components/tuition/TuitionModal";
 import { formatDate } from "../utils/dateHelpers";
 import "./SearchStudentPage.css";
+import { useGoBack } from '../hooks/useGoBack';
+import { useDialog } from '../hooks/useDialog';
+import { useToast } from "../context/ToastContext";
+import { SkeletonProfile } from "../components/common/Skeleton";
 
 function fmtDate(val: string | undefined): string {
   if (!val) return "";
@@ -36,11 +40,11 @@ function fmtDate(val: string | undefined): string {
 
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { delayChildren: 0.15, staggerChildren: 0.07 } },
+  visible: { opacity: 1, transition: { delayChildren: 0, staggerChildren: 0.03 } },
 };
 const itemVariants = {
   hidden: { y: 16, opacity: 0 },
-  visible: { y: 0, opacity: 1, transition: { duration: 0.35 } },
+  visible: { y: 0, opacity: 1, transition: { duration: 0.2 } },
 };
 
 // ─── field definitions ────────────────────────────────────────────────────────
@@ -110,6 +114,7 @@ function renderValue(
 export default function StudentCardPage() {
   const { studentId } = useParams();
   const navigate = useNavigate();
+  const goBack = useGoBack("/database");
   const { students, loading, error, updateLocal, removeLocal } = useStudents();
   const { addLocal: addAlumniLocal } = useAlumni();
 
@@ -118,11 +123,12 @@ export default function StudentCardPage() {
   const [draft, setDraft]             = useState<Partial<Student>>({});
   const [saving, setSaving]           = useState(false);
   const [saveError, setSaveError]     = useState("");
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const toast = useToast();
   const [graduateConfirm, setGraduateConfirm] = useState(false);
   const [graduating, setGraduating]           = useState(false);
   const [graduateError, setGraduateError]     = useState("");
   const [graduateDate, setGraduateDate]       = useState("");
+  const graduateDialogRef = useDialog(() => { if (!graduating) setGraduateConfirm(false); }, graduateConfirm);
   const [showTuition, setShowTuition]         = useState(false);
 
   const student = useMemo(
@@ -167,7 +173,6 @@ export default function StudentCardPage() {
     if (!student) return;
     setDraft({ ...student });
     setSaveError("");
-    setSaveSuccess(false);
     setEditMode(true);
   }
 
@@ -191,10 +196,9 @@ export default function StudentCardPage() {
       const saved = await updateStudent(student.id, patch);
       // עדכון מיידי ב-Context — בלי המתנה ל-Realtime
       updateLocal(saved);
-      setSaveSuccess(true);
+      toast.success("הנתונים נשמרו בהצלחה");
       setEditMode(false);
       setDraft({});
-      setTimeout(() => setSaveSuccess(false), 2500);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "שגיאה בשמירה");
     } finally {
@@ -211,6 +215,7 @@ export default function StudentCardPage() {
       const alumnus = await graduateStudent(student.id, graduateDate);
       removeLocal(student.id);
       addAlumniLocal(alumnus);
+      toast.success(`${student.lastName} ${student.firstName} הועבר לרשימת הבוגרים`);
       navigate("/database");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "שגיאה בהעברה";
@@ -225,7 +230,7 @@ export default function StudentCardPage() {
     return (
       <div className="search-page with-navbar">
         <div className="search-shell">
-          <p className="search-state">טוען כרטיס תלמיד...</p>
+          <SkeletonProfile label="טוען כרטיס תלמיד..." />
         </div>
       </div>
     );
@@ -236,7 +241,7 @@ export default function StudentCardPage() {
       <div className="search-page with-navbar">
         <div className="search-shell">
           <p className="search-error">{error}</p>
-          <button className="back-button" onClick={() => navigate(-1)}>חזרה</button>
+          <button className="back-button" onClick={goBack}>חזרה</button>
         </div>
       </div>
     );
@@ -247,7 +252,7 @@ export default function StudentCardPage() {
       <div className="search-page with-navbar">
         <div className="search-shell">
           <p className="search-state">התלמיד לא נמצא</p>
-          <button className="back-button" onClick={() => navigate(-1)}>חזרה לחיפוש</button>
+          <button className="back-button" onClick={goBack}>חזרה לחיפוש</button>
         </div>
       </div>
     );
@@ -258,15 +263,14 @@ export default function StudentCardPage() {
   return (
     <motion.div
       className="search-page with-navbar"
-      initial={{ opacity: 0 }}
+      initial={false}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.4 }}
     >
       {/* ── Graduate confirm modal ── */}
       {graduateConfirm && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center" }}
+        <div className="dialog-backdrop" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center" }}
           onClick={() => !graduating && setGraduateConfirm(false)}>
-          <div style={{ background: "#fffdf8", border: "1px solid #d9b980", borderRadius: 22, padding: 28, width: 400, maxWidth: "90vw", textAlign: "center", boxShadow: "0 20px 50px rgba(92,53,23,0.2)", direction: "rtl" }}
+          <div ref={graduateDialogRef} aria-label="העברה לבוגרים" className="dialog-card" style={{ background: "#fffdf8", border: "1px solid #d9b980", borderRadius: 22, padding: 28, width: 400, maxWidth: "90vw", textAlign: "center", boxShadow: "0 20px 50px rgba(92,53,23,0.2)", direction: "rtl" }}
             onClick={(e) => e.stopPropagation()}>
             <h3 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 900, color: "#5b331a" }}>העברה לבוגרים</h3>
             <p style={{ color: "#5b331a", marginBottom: 18, fontSize: 15 }}>
@@ -376,17 +380,6 @@ export default function StudentCardPage() {
           {/* ── Feedback banner — תמיד תופס מקום, רק הנראות משתנה ── */}
           <div className="profile-feedback-slot">
             <AnimatePresence>
-              {saveSuccess && (
-                <motion.div
-                  className="profile-save-success"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  ✔ הנתונים נשמרו בהצלחה
-                </motion.div>
-              )}
               {saveError && (
                 <motion.div
                   className="profile-save-error"
@@ -501,7 +494,7 @@ export default function StudentCardPage() {
 
             {/* כפתור חזרה */}
             <motion.div className="profile-item profile-item-btn" variants={itemVariants}>
-              <button className="profile-grid-btn profile-grid-btn--back" onClick={() => navigate(-1)}>
+              <button className="profile-grid-btn profile-grid-btn--back" onClick={goBack}>
                 חזרה
               </button>
             </motion.div>

@@ -54,7 +54,7 @@ export default function FeedbackPage() {
   const [sent, setSent] = useState(false);
 
   useEffect(() => {
-    getMyProfile().then((p) => { if (p) setName((n) => n || p.displayName); }).catch(() => {});
+    getMyProfile().then((p) => { if (p) setName((n) => n || p.displayName || ""); }).catch(() => {});
   }, []);
 
   const payload: FeedbackPayload = {

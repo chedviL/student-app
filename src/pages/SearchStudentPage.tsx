@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo, useDeferredValue } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
 import { useStudents } from "../context/StudentsContext";
 import "./SearchStudentPage.css";
+import { usePersistentState } from "../hooks/usePersistentState";
 
 function normalize(text: string | undefined) {
   return (text || "")
@@ -31,29 +32,31 @@ const containerVariants = {
   visible: {
     opacity: 1,
     transition: {
-      delayChildren: 0.2,
-      staggerChildren: 0.1,
+      delayChildren: 0,
+      staggerChildren: 0.04,
     },
   },
 };
 
 const itemVariants = {
-  hidden: { y: 20, opacity: 0 },
+  hidden: { y: 10, opacity: 0 },
   visible: {
     y: 0,
     opacity: 1,
     transition: {
-      duration: 0.4,
+      duration: 0.22,
     },
   },
 };
 
 export default function SearchStudentPage() {
   const { students: allStudents, loading, error } = useStudents();
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = usePersistentState("view:search:query", "");
   const navigate = useNavigate();
 
+  const deferredQuery = useDeferredValue(query);
   const filteredStudents = useMemo(() => {
+    const query = deferredQuery;
     const normalizedQuery = normalize(query);
     const numericQuery = normalizeDigits(query);
 
@@ -93,14 +96,13 @@ export default function SearchStudentPage() {
 
       return true;
     });
-  }, [query, allStudents]);
+  }, [deferredQuery, allStudents]);
 
   return (
     <motion.div
       className="search-page with-navbar"
-      initial={{ opacity: 0 }}
+      initial={false}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
     >
       <motion.div
         className="search-shell"
@@ -130,7 +132,7 @@ export default function SearchStudentPage() {
           )}
 
         {loading && (
-          <motion.p className="search-state" variants={itemVariants}>
+          <motion.p className="search-state is-loading" role="status" variants={itemVariants}>
             טוען תלמידים...
           </motion.p>
         )}

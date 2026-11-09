@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useRef, useEffect } from "react";
+import { useMemo, useState, useCallback, useRef, useEffect, useDeferredValue } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Users, BookOpen, MapPin, Check, X, Loader2, Pencil, Download } from "lucide-react";
@@ -9,6 +9,11 @@ import { updateAlumnus } from "../api/alumniApi";
 import type { Alumni } from "../types/student";
 import "./AlumniPage.css";
 import "./DatabasePage.css";
+import { usePersistentState } from "../hooks/usePersistentState";
+import { useDialog } from "../hooks/useDialog";
+import { useToast } from "../context/ToastContext";
+import { useFadeOnChange } from "../hooks/useFadeOnChange";
+import { SkeletonTable } from "../components/common/Skeleton";
 
 // ─── Column definitions ───────────────────────────────────────────────────────
 
@@ -138,9 +143,9 @@ function StatCard({
   return (
     <motion.div
       className="db-stat-card"
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
+      transition={{ duration: 0.2 }}
     >
       <div className="db-stat-icon">{icon}</div>
       <div className="db-stat-value">{value}</div>
@@ -161,6 +166,7 @@ function EditableCell({
   onSaved: (updated: Alumni) => void;
 }) {
   const { updateLocal } = useAlumni();
+  const toast = useToast();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(String(alumni[col.key] ?? ""));
   const [saving, setSaving] = useState(false);
@@ -175,9 +181,11 @@ function EditableCell({
       updateLocal(saved);
       onSaved(saved);
       setEditing(false);
-    } catch {
+      toast.success("נשמר");
+    } catch (err) {
       setValue(original);
       setEditing(false);
+      toast.error(err instanceof Error ? `השמירה נכשלה: ${err.message}` : "השמירה נכשלה");
     } finally {
       setSaving(false);
     }
@@ -249,17 +257,19 @@ export default function AlumniPage() {
   const { alumni: raw, loading, error } = useAlumni();
   const navigate = useNavigate();
 
-  const [query, setQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"lastNameAsc" | "classNameAsc" | "classThenName">("lastNameAsc");
-  const [lastNameFilter, setLastNameFilter] = useState("");
-  const [firstNameFilter, setFirstNameFilter] = useState("");
-  const [classFilter, setClassFilter] = useState<Set<string>>(new Set());
-  const [communityFilter, setCommunityFilter] = useState<Set<string>>(new Set());
-  const [cityFilter, setCityFilter] = useState("");
-  const [boardingFilter, setBoardingFilter] = useState<Set<string>>(new Set());
-  const [tuitionStatusFilter, setTuitionStatusFilter] = useState<Set<string>>(new Set());
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState<Set<string>>(new Set());
+  const [query, setQuery] = usePersistentState("view:alumni:query", "");
+  const [sortBy, setSortBy] = usePersistentState<"lastNameAsc" | "classNameAsc" | "classThenName">("view:alumni:sortBy", "lastNameAsc");
+  const [lastNameFilter, setLastNameFilter] = usePersistentState("view:alumni:lastNameFilter", "");
+  const [firstNameFilter, setFirstNameFilter] = usePersistentState("view:alumni:firstNameFilter", "");
+  const [classFilter, setClassFilter] = usePersistentState<Set<string>>("view:alumni:classFilter", new Set());
+  const [communityFilter, setCommunityFilter] = usePersistentState<Set<string>>("view:alumni:communityFilter", new Set());
+  const [cityFilter, setCityFilter] = usePersistentState("view:alumni:cityFilter", "");
+  const [boardingFilter, setBoardingFilter] = usePersistentState<Set<string>>("view:alumni:boardingFilter", new Set());
+  const [tuitionStatusFilter, setTuitionStatusFilter] = usePersistentState<Set<string>>("view:alumni:tuitionStatusFilter", new Set());
+  const [paymentMethodFilter, setPaymentMethodFilter] = usePersistentState<Set<string>>("view:alumni:paymentMethodFilter", new Set());
   const [showExportModal, setShowExportModal] = useState(false);
+  const exportDialogRef = useDialog(() => setShowExportModal(false), showExportModal);
+  const toast = useToast();
   const [selectedExportFields, setSelectedExportFields] = useState<Set<string>>(
     new Set(ALUMNI_COLUMNS.map((c) => c.key))
   );
@@ -273,7 +283,12 @@ export default function AlumniPage() {
   }, []);
 
   // ── filter + search + sort ──
+  // typing stays responsive: the heavy filtering follows the input a moment later
+  const deferredQuery = useDeferredValue(query);
+  // gentle fade of the rows when a filter or the sort changes (not on every keystroke)
+  const rowsRef = useFadeOnChange<HTMLTableSectionElement>(JSON.stringify([sortBy, lastNameFilter, firstNameFilter, [...classFilter], [...communityFilter], cityFilter, [...boardingFilter], [...tuitionStatusFilter], [...paymentMethodFilter]]));
   const displayed = useMemo(() => {
+    const query = deferredQuery;
     let list = localAlumni;
     if (lastNameFilter)           list = list.filter((a) => (a.lastName  || "").includes(lastNameFilter));
     if (firstNameFilter)          list = list.filter((a) => (a.firstName || "").includes(firstNameFilter));
@@ -300,7 +315,7 @@ export default function AlumniPage() {
       return cc !== 0 ? cc : cmp(a.lastName || "", b.lastName || "");
     });
     return list;
-  }, [localAlumni, query, lastNameFilter, firstNameFilter, classFilter, communityFilter, cityFilter, boardingFilter, tuitionStatusFilter, paymentMethodFilter, sortBy]);
+  }, [localAlumni, deferredQuery, lastNameFilter, firstNameFilter, classFilter, communityFilter, cityFilter, boardingFilter, tuitionStatusFilter, paymentMethodFilter, sortBy]);
 
   // ── stats ──
   const stats = useMemo(() => {
@@ -343,21 +358,22 @@ export default function AlumniPage() {
         label: c.label,
         type: c.key === 'graduatedAt' || c.key === 'gregorianDate' ? 'date' : undefined,
       }));
+    setShowExportModal(false);
     exportToExcel(
       displayed as unknown as Record<string, unknown>[],
       exportCols,
       'בוגרים',
       `רשימת_בוגרים_${todayStr()}.xlsx`,
-    );
-    setShowExportModal(false);
+    )
+      .then(() => toast.success("הקובץ ירד בהצלחה"))
+      .catch(() => toast.error("הייצוא נכשל, נסה שוב"));
   }
 
   return (
     <motion.div
       className="al-page with-navbar"
-      initial={{ opacity: 0 }}
+      initial={false}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.4 }}
     >
       <div className="al-shell">
 
@@ -413,7 +429,7 @@ export default function AlumniPage() {
         {/* ── Export modal ── */}
         {showExportModal && (
           <div className="export-modal-overlay" onClick={() => setShowExportModal(false)}>
-            <div className="export-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="export-modal" ref={exportDialogRef} aria-label="בחירת שדות לייצוא" onClick={(e) => e.stopPropagation()}>
               <h3 className="export-modal-title">בחר שדות לייצוא</h3>
               <div className="export-modal-actions">
                 <button className="export-modal-btn" onClick={() => setSelectedExportFields(new Set(ALUMNI_COLUMNS.map((c) => c.key)))}>בחר הכל</button>
@@ -445,7 +461,7 @@ export default function AlumniPage() {
           </div>
         )}
 
-        {loading && <p className="search-state">טוען נתונים...</p>}
+        {loading && <SkeletonTable rows={10} cols={7} label="טוען בוגרים..." />}
         {error   && <p className="search-error">{error}</p>}
 
         {/* ── Table ── */}
@@ -487,7 +503,7 @@ export default function AlumniPage() {
                     <th className="al-th-link">כרטיס</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody ref={rowsRef}>
                   <AnimatePresence>
                     {displayed.map((alumni, idx) => (
                       <tr

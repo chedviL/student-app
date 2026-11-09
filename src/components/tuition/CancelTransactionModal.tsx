@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, AlertTriangle, Loader2 } from 'lucide-react';
 import { fmtAmount, fmtDate, txTypeLabel } from './TuitionSection';
 import type { TuitionTransaction, TuitionCurrency } from '../../types/tuition';
+import { useDialog } from '../../hooks/useDialog';
 
 interface CancelTransactionModalProps {
   transaction: TuitionTransaction;
@@ -26,6 +27,7 @@ export default function CancelTransactionModal({
   const [reason, setReason] = useState('');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
+  const dialogRef = useDialog(() => { if (!saving) onClose(); });
 
   const currency = transaction.currency as TuitionCurrency;
 
@@ -82,6 +84,8 @@ export default function CancelTransactionModal({
         }}
       >
         <div
+          ref={dialogRef}
+          aria-label="ביטול תנועה"
           onClick={(e) => e.stopPropagation()}
           style={{
             width: '100%', maxWidth: 460,
