@@ -248,6 +248,25 @@
   the navbar never moves.
 */
 
+.navbar-feedback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  margin-inline-end: 6px;
+  border-radius: 8px;
+  color: rgba(247, 214, 152, 0.75);
+  transition: color 0.15s, background 0.15s;
+}
+
+.navbar-feedback:hover,
+.navbar-feedback.active {
+  color: #f7d698;
+  background: rgba(247, 214, 152, 0.14);
+}
+
 .navbar-user {
   width: 150px;
   min-width: 150px;
