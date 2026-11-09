@@ -248,25 +248,6 @@
   the navbar never moves.
 */
 
-.navbar-feedback {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 30px;
-  height: 30px;
-  margin-inline-end: 6px;
-  border-radius: 8px;
-  color: rgba(247, 214, 152, 0.75);
-  transition: color 0.15s, background 0.15s;
-}
-
-.navbar-feedback:hover,
-.navbar-feedback.active {
-  color: #f7d698;
-  background: rgba(247, 214, 152, 0.14);
-}
-
 .navbar-user {
   width: 150px;
   min-width: 150px;
@@ -445,7 +426,7 @@
    Tablet
 ========================================== */
 
-@media (max-width: 950px) and (min-width: 701px) {
+@media (max-width: 1150px) and (min-width: 1025px) {
   .navbar {
     padding: 0 18px;
   }
@@ -480,7 +461,7 @@
    Mobile
 ========================================== */
 
-@media (max-width: 700px) {
+@media (max-width: 1024px) {
   .navbar {
     padding: 0 16px;
   }
@@ -536,5 +517,27 @@
 
   .navbar-drawer {
     animation: none;
+  }
+}
+
+/* On mid-size screens the feedback item shows only its icon, so the menu doesn't crowd */
+@media (max-width: 1260px) and (min-width: 1025px) {
+  .navbar-links .navbar-link-compact .navbar-link-label {
+    display: none;
+  }
+}
+
+@media (max-width: 1260px) and (min-width: 1151px) {
+  .navbar-link {
+    padding: 7px 10px;
+    gap: 4px;
+  }
+}
+
+/* Tablets: keep the user area next to the menu button instead of floating mid-bar */
+@media (max-width: 1024px) and (min-width: 701px) {
+  .navbar-user {
+    margin-inline-start: auto;
+    margin-inline-end: 12px;
   }
 }

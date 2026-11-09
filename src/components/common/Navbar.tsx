@@ -6,8 +6,6 @@ import { useAuth } from "../../context/AuthContext";
 import { getMyProfile } from "../../api/tuitionApi";
 import "./Navbar.css";
 
-const FEEDBACK_ITEM = { to: "/feedback", label: "דיווח תקלה / הצעה לשיפור", icon: <MessageSquareWarning size={16} />, end: false };
-
 const NAV_ITEMS = [
   { to: "/",         label: "בית",         icon: <Home          size={16} />, end: true  },
   { to: "/search",   label: "חיפוש",       icon: <Search        size={16} />, end: false },
@@ -16,6 +14,7 @@ const NAV_ITEMS = [
   { to: "/alumni",   label: "בוגרים",      icon: <GraduationCap size={16} />, end: false },
   { to: "/payments", label: "תשלומים",     icon: <CreditCard    size={16} />, end: false },
   { to: "/ai",       label: "עוזר AI",      icon: <Sparkles      size={16} />, end: false },
+  { to: "/feedback", label: "דיווח ושיפורים", icon: <MessageSquareWarning size={16} />, end: false, compact: true },
 ];
 
 export default function Navbar() {
@@ -52,9 +51,14 @@ export default function Navbar() {
         <ul className="navbar-links">
           {NAV_ITEMS.map((item) => (
             <li key={item.to}>
-              <NavLink to={item.to} end={item.end} className={({ isActive: ia }) => "navbar-link" + (ia ? " active" : "")}>
+              <NavLink
+                to={item.to}
+                end={item.end}
+                className={({ isActive: ia }) => "navbar-link" + (item.compact ? " navbar-link-compact" : "") + (ia ? " active" : "")}
+                title={item.compact ? item.label : undefined}
+              >
                 {item.icon}
-                {item.label}
+                <span className="navbar-link-label">{item.label}</span>
               </NavLink>
             </li>
           ))}
@@ -66,14 +70,6 @@ export default function Navbar() {
               {displayName}
             </span>
           )}
-          <NavLink
-            to={FEEDBACK_ITEM.to}
-            className={({ isActive: ia }) => "navbar-feedback" + (ia ? " active" : "")}
-            title={FEEDBACK_ITEM.label}
-            aria-label={FEEDBACK_ITEM.label}
-          >
-            <MessageSquareWarning size={17} />
-          </NavLink>
           <button className="navbar-logout" onClick={handleLogout} title="התנתקות" aria-label="התנתקות">
             <LogOut size={16} />
           </button>
@@ -86,7 +82,7 @@ export default function Navbar() {
 
       {open && (
         <div className="navbar-drawer">
-          {[...NAV_ITEMS, FEEDBACK_ITEM].map((item) => (
+          {NAV_ITEMS.map((item) => (
             <NavLink key={item.to} to={item.to} end={item.end} className={isActive(item.to, item.end ?? false) ? "navbar-link active" : "navbar-link"} onClick={() => setOpen(false)}>
               {item.icon}
               {item.label}
