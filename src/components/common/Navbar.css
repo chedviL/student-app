@@ -356,6 +356,21 @@
    Mobile drawer
 ========================================== */
 
+.navbar-drawer-backdrop {
+  position: fixed;
+  inset: 62px 0 0 0;
+  z-index: 998;
+  background: rgba(20, 10, 4, 0.35);
+  animation: drawerBackdropIn 0.18s ease both;
+}
+
+@keyframes drawerBackdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.navbar-drawer:focus { outline: none; }
+
 .navbar-drawer {
   position: fixed;
 

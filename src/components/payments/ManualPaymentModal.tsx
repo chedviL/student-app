@@ -4,6 +4,8 @@ import { addManualTransaction } from '../../api/tuitionApi';
 import { firstOfMonth } from '../tuition/TuitionSection';
 import type { Student } from '../../types/student';
 import type { TransactionType, TuitionCurrency } from '../../types/tuition';
+import { useDialog } from '../../hooks/useDialog';
+import { useToast } from '../../context/ToastContext';
 
 export default function ManualPaymentModal({
   students,
@@ -25,6 +27,8 @@ export default function ManualPaymentModal({
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const [search, setSearch] = useState('');
+  const toast = useToast();
+  const dialogRef = useDialog(() => { if (!saving) onClose(); });
 
   const filteredStudents = useMemo(() => {
     if (!search) return students;
@@ -61,6 +65,7 @@ export default function ManualPaymentModal({
         note: note.trim() || undefined,
       });
       onSaved();
+      toast.success('התשלום נשמר');
       onClose();
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'שגיאה בשמירה');
@@ -77,12 +82,12 @@ export default function ManualPaymentModal({
   };
 
   return (
-    <div style={{
+    <div className="dialog-backdrop" onClick={() => { if (!saving) onClose(); }} style={{
       position: 'fixed', inset: 0, zIndex: 1000,
       background: 'rgba(0,0,0,0.45)', display: 'flex',
       alignItems: 'center', justifyContent: 'center', padding: 16,
     }}>
-      <div style={{
+      <div ref={dialogRef} aria-label="הוספת תשלום ידני" className="dialog-card" onClick={(e) => e.stopPropagation()} style={{
         background: '#fffdf8', borderRadius: 20, padding: 28,
         width: '100%', maxWidth: 480, direction: 'rtl',
         boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
@@ -91,7 +96,7 @@ export default function ManualPaymentModal({
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: '#4c2415' }}>הוספת תשלום ידני</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8b6544', padding: 4 }}>
+          <button onClick={onClose} aria-label="סגירה" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8b6544', padding: 4 }}>
             <X size={20} />
           </button>
         </div>

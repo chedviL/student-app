@@ -8,6 +8,7 @@ import {
 } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabaseClient';
+import { clearPersistentState } from '../hooks/usePersistentState';
 
 interface AuthState {
   user: User | null;
@@ -28,7 +29,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // onAuthStateChange מופעל גם בטעינה הראשונה עם ה-session הקיים מה-localStorage
     // לכן הוא מספיק לבדיקה — getSession משמש רק כ-fallback
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      // saved list filters belong to the session that created them
+      if (event === 'SIGNED_OUT') clearPersistentState();
       setSession(s);
       setUser(s?.user ?? null);
       setLoading(false);

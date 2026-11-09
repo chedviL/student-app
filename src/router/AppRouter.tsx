@@ -1,5 +1,5 @@
-import { BrowserRouter, Route, Routes, useLocation, Navigate, Outlet } from "react-router-dom";
-import { Suspense, lazy, useEffect } from "react";
+import { BrowserRouter, Route, Routes, useLocation, useNavigationType, Navigate, Outlet } from "react-router-dom";
+import { Suspense, lazy, useEffect, useLayoutEffect, useRef } from "react";
 import Navbar from "../components/common/Navbar";
 import Loading, { Splash } from "../components/common/Loading";
 import HomePage from "../pages/HomePage";
@@ -50,11 +50,96 @@ function prefetchPages() {
   else window.setTimeout(run, 1500);
 }
 
-function ScrollToTop() {
-  const { pathname } = useLocation();
+// ── Scroll restoration ────────────────────────────────────────────────────────
+// New navigation → top of the page. Back/forward → the exact position the user
+// left, so returning from a student card lands on the same row of the list.
+const SCROLL_KEY = "scroll-positions";
+function loadPositions(): Record<string, number> {
+  try { return JSON.parse(sessionStorage.getItem(SCROLL_KEY) || "{}"); } catch { return {}; }
+}
+const scrollPositions: Record<string, number> = loadPositions();
+function persistPositions() {
+  try { sessionStorage.setItem(SCROLL_KEY, JSON.stringify(scrollPositions)); } catch { /* ignore */ }
+}
+
+function ScrollManager() {
+  const location = useLocation();
+  const navType = useNavigationType();
+  // the entry currently on screen — updated synchronously on commit so that
+  // scroll events caused by the page swap are never saved under the old entry
+  const activeKey = useRef(location.key);
+  useLayoutEffect(() => {
+    activeKey.current = location.key;
+  }, [location.key]);
+
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "instant" });
-  }, [pathname]);
+    if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual";
+  }, []);
+
+  // remember positions of the window and of inner scroll areas marked with
+  // data-scroll-key (e.g. the students table) while the user scrolls
+  useEffect(() => {
+    const key = location.key;
+    let frame = 0;
+    const onScroll = (e: Event) => {
+      if (activeKey.current !== key) return;
+      const target = e.target;
+      if (target instanceof HTMLElement) {
+        if (!target.dataset.scrollKey) return;
+        scrollPositions[`${key}:${target.dataset.scrollKey}`] = target.scrollTop;
+      } else {
+        scrollPositions[key] = window.scrollY;
+      }
+      // writing to storage is batched to once per frame
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(persistPositions);
+    };
+    document.addEventListener("scroll", onScroll, { passive: true, capture: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener("scroll", onScroll, { capture: true });
+    };
+  }, [location.key]);
+
+  // restore (back/forward) or reset (new page)
+  useEffect(() => {
+    const key = location.key;
+    const inner = Object.keys(scrollPositions).filter((k) => k.startsWith(`${key}:`));
+    if (navType !== "POP" || (!scrollPositions[key] && inner.length === 0)) {
+      window.scrollTo({ top: 0, behavior: "instant" });
+      return;
+    }
+    // the page (lazy code + data) may still be growing — retry for a moment
+    let frame = 0;
+    const started = performance.now();
+    const pending = new Set(inner);
+    let windowDone = !scrollPositions[key];
+    const tryRestore = () => {
+      const timedOut = performance.now() - started > 1500;
+      if (!windowDone) {
+        const target = scrollPositions[key];
+        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+        if (maxScroll >= target || timedOut) {
+          window.scrollTo({ top: target, behavior: "instant" });
+          windowDone = true;
+        }
+      }
+      for (const k of [...pending]) {
+        const el = document.querySelector<HTMLElement>(`[data-scroll-key="${k.slice(key.length + 1)}"]`);
+        const target = scrollPositions[k];
+        if (el && (el.scrollHeight - el.clientHeight >= target || timedOut)) {
+          el.scrollTop = target;
+          pending.delete(k);
+        } else if (timedOut) {
+          pending.delete(k);
+        }
+      }
+      if (!windowDone || pending.size > 0) frame = requestAnimationFrame(tryRestore);
+    };
+    tryRestore();
+    return () => cancelAnimationFrame(frame);
+  }, [location.key, navType]);
+
   return null;
 }
 
@@ -140,7 +225,7 @@ export default function AppRouter() {
 
   return (
     <BrowserRouter>
-      <ScrollToTop />
+      <ScrollManager />
       <AppRoutes />
     </BrowserRouter>
   );

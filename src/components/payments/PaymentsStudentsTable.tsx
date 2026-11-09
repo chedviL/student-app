@@ -6,6 +6,8 @@ import type { TuitionBalance } from '../../types/tuition';
 import ManualPaymentModal from './ManualPaymentModal';
 import { updateStudent } from '../../api/studentsApi';
 import { useStudents } from '../../context/StudentsContext';
+import { usePersistentState } from '../../hooks/usePersistentState';
+import { useToast } from '../../context/ToastContext';
 
 type SortKey = 'name' | 'balance';
 type FilterStatus = 'all' | 'debt' | 'ok' | 'attention';
@@ -31,12 +33,12 @@ export default function PaymentsStudentsTable({
 }) {
   const navigate = useNavigate();
   const { updateLocal } = useStudents();
-  const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
-  const [filterCurrency, setFilterCurrency] = useState('');
-  const [filterRank, setFilterRank] = useState('');
-  const [sortKey, setSortKey] = useState<SortKey>('name');
-  const [sortAsc, setSortAsc] = useState(true);
+  const [search, setSearch] = usePersistentState("view:paymentsTable:search", '');
+  const [filterStatus, setFilterStatus] = usePersistentState<FilterStatus>("view:paymentsTable:filterStatus", 'all');
+  const [filterCurrency, setFilterCurrency] = usePersistentState("view:paymentsTable:filterCurrency", '');
+  const [filterRank, setFilterRank] = usePersistentState("view:paymentsTable:filterRank", '');
+  const [sortKey, setSortKey] = usePersistentState<SortKey>("view:paymentsTable:sortKey", 'name');
+  const [sortAsc, setSortAsc] = usePersistentState("view:paymentsTable:sortAsc", true);
   const [showModal, setShowModal] = useState(false);
 
   // ── Row-level edit state ──
@@ -44,6 +46,7 @@ export default function PaymentsStudentsTable({
   const [editDraft, setEditDraft] = useState<{ tuition: string; tuitionRank: string }>({ tuition: '', tuitionRank: '' });
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
+  const toast = useToast();
 
   function startEdit(s: Student, e: React.MouseEvent) {
     e.stopPropagation();
@@ -66,6 +69,7 @@ export default function PaymentsStudentsTable({
       const saved = await updateStudent(studentId, { tuition: editDraft.tuition, tuitionRank: editDraft.tuitionRank });
       updateLocal(saved);
       setEditingId(null);
+      toast.success('נשמר');
     } catch (err) {
       setEditError(err instanceof Error ? err.message : 'שגיאה בשמירה');
     } finally {

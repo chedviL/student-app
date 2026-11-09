@@ -3,6 +3,7 @@ import AppRouter from "./router/AppRouter";
 import { StudentsProvider } from "./context/StudentsContext";
 import { AlumniProvider } from "./context/AlumniContext";
 import { AuthProvider } from "./context/AuthContext";
+import { ToastProvider } from "./context/ToastContext";
 
 function App() {
   return (
@@ -11,7 +12,9 @@ function App() {
         <AlumniProvider>
           {/* respects the OS "reduce motion" setting */}
           <MotionConfig reducedMotion="user">
-            <AppRouter />
+            <ToastProvider>
+              <AppRouter />
+            </ToastProvider>
           </MotionConfig>
         </AlumniProvider>
       </StudentsProvider>

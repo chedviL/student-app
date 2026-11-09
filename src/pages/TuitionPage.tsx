@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, Plus, Loader2 } from 'lucide-react';
 import { useStudents } from '../context/StudentsContext';
@@ -10,11 +10,14 @@ import {
   fmtAmount,
 } from '../components/tuition/TuitionSection';
 import type { TuitionCurrency, NewManualTransaction } from '../types/tuition';
+import { useGoBack } from '../hooks/useGoBack';
+import { useToast } from '../context/ToastContext';
 
 export default function TuitionPage() {
   const { studentId } = useParams();
-  const navigate = useNavigate();
+  const goBack = useGoBack('/payments');
   const { students } = useStudents();
+  const toast = useToast();
   const student = students.find(
     (s) => String(s.passportOrId || s.id || '') === String(studentId || '')
   ) ?? null;
@@ -46,6 +49,7 @@ export default function TuitionPage() {
   async function handleAdd(tx: NewManualTransaction) {
     await addTransaction(tx);
     setShowForm(false);
+    toast.success('התנועה נוספה');
   }
 
   return (
@@ -59,7 +63,7 @@ export default function TuitionPage() {
 
         {/* ── Back ── */}
         <button
-          onClick={() => navigate(-1)}
+          onClick={goBack}
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             background: 'none', border: 'none', cursor: 'pointer',

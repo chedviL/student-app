@@ -9,6 +9,7 @@ import PaymentsOverview from '../components/payments/PaymentsOverview';
 import PaymentsStudentsTable from '../components/payments/PaymentsStudentsTable';
 import PaymentsTransactions from '../components/payments/PaymentsTransactions';
 import PaymentsMonths from '../components/payments/PaymentsMonths';
+import { usePersistentState } from '../hooks/usePersistentState';
 
 type Tab = 'overview' | 'students' | 'transactions' | 'months';
 
@@ -22,7 +23,7 @@ const TABS: { key: Tab; label: string }[] = [
 export default function PaymentsPage() {
   const navigate = useNavigate();
   const { students } = useStudents();
-  const [tab, setTab] = useState<Tab>('students');
+  const [tab, setTab] = usePersistentState<Tab>("view:payments:tab", 'students');
   const [balances, setBalances] = useState<TuitionBalance[]>([]);
 
   const loadBalances = useCallback(async () => {

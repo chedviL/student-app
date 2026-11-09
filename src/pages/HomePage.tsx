@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search,
@@ -24,6 +24,16 @@ const DISPLAY_DURATION = 5000;
 export default function HomePage() {
   const navigate = useNavigate();
   const [current, setCurrent] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [tabHidden, setTabHidden] = useState(() => document.hidden);
+  const touchStartX = useRef<number | null>(null);
+
+  // לא מחליפים תמונות כשהלשונית מוסתרת
+  useEffect(() => {
+    const onVis = () => setTabHidden(document.hidden);
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
 
   // התמונה הראשונה נטענת מיד; את השאר טוענים ברקע רק אחרי שהדף מוכן,
   // כדי שלא יתחרו על רוחב הפס עם הטעינה הראשונית
@@ -40,12 +50,25 @@ export default function HomePage() {
 
   // כל תמונה מוצגת 5 שניות מלאות
   useEffect(() => {
+    if (paused || tabHidden) return;
     const timer = window.setTimeout(() => {
       setCurrent((prev) => (prev + 1) % slides.length);
     }, DISPLAY_DURATION);
 
     return () => window.clearTimeout(timer);
-  }, [current]);
+  }, [current, paused, tabHidden]);
+
+  // החלקה בטלפון (RTL: החלקה שמאלה = התמונה הבאה)
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current == null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(dx) < 40) return;
+    setCurrent((prev) => (prev + (dx < 0 ? 1 : -1) + slides.length) % slides.length);
+  };
 
   const goTo = (idx: number) => {
     setCurrent(idx);
@@ -54,7 +77,13 @@ export default function HomePage() {
   return (
     <div className="home-page with-navbar">
       {/* ── HERO ── */}
-      <div className="home-hero">
+      <div
+        className="home-hero"
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
         <AnimatePresence mode="sync" initial={false}>
           <motion.div
             key={current}

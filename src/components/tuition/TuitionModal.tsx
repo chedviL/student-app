@@ -7,6 +7,8 @@ import { updateStudent } from '../../api/studentsApi';
 import { useStudents } from '../../context/StudentsContext';
 import type { TuitionCurrency, NewManualTransaction, TuitionMonthSummary } from '../../types/tuition';
 import type { Student } from '../../types/student';
+import { useDialog } from '../../hooks/useDialog';
+import { useToast } from '../../context/ToastContext';
 
 interface TuitionModalProps {
   student: Student;
@@ -18,6 +20,7 @@ export function TuitionModal({ student, onClose, onTransactionAdded }: TuitionMo
   const { balance, history, loading, error, addTransaction, editTransaction, cancelTx, updateCurrency } = useStudentTuition(student.id);
   const { updateLocal } = useStudents();
   const [showForm, setShowForm] = useState(false);
+  const dialogRef = useDialog(onClose);
   const [showHistory, setShowHistory] = useState(false);
   const [currencyChanging, setCurrencyChanging] = useState(false);
   const [currencyError, setCurrencyError] = useState('');
@@ -27,6 +30,7 @@ export function TuitionModal({ student, onClose, onTransactionAdded }: TuitionMo
   const [staticDraft, setStaticDraft] = useState({ tuition: student.tuition ?? '', tuitionRank: student.tuitionRank ?? '' });
   const [staticSaving, setStaticSaving] = useState(false);
   const [staticError, setStaticError] = useState('');
+  const toast = useToast();
 
   async function saveStatic() {
     setStaticSaving(true);
@@ -36,6 +40,7 @@ export function TuitionModal({ student, onClose, onTransactionAdded }: TuitionMo
       updateLocal(saved);
       onTransactionAdded?.();
       setEditingStatic(false);
+      toast.success('נתוני שכר הלימוד נשמרו');
     } catch (e) {
       setStaticError(e instanceof Error ? e.message : 'שגיאה בשמירה');
     } finally {
@@ -86,6 +91,7 @@ export function TuitionModal({ student, onClose, onTransactionAdded }: TuitionMo
     await addTransaction(tx);
     setShowForm(false);
     onTransactionAdded?.();
+    toast.success('התנועה נוספה');
   }
 
   async function handleChangeCurrency(newCurrency: TuitionCurrency) {
@@ -94,6 +100,7 @@ export function TuitionModal({ student, onClose, onTransactionAdded }: TuitionMo
     try {
       await updateCurrency(newCurrency);
       onTransactionAdded?.();
+      toast.success('המטבע עודכן');
     } catch (e) {
       setCurrencyError(e instanceof Error ? e.message : 'שגיאה בעדכון מטבע');
     } finally {
@@ -104,11 +111,13 @@ export function TuitionModal({ student, onClose, onTransactionAdded }: TuitionMo
   async function handleEdit(id: string, fields: Partial<Pick<NewManualTransaction, 'amount' | 'transactionDate' | 'billingMonth' | 'transactionType' | 'note'>>) {
     await editTransaction(id, fields);
     onTransactionAdded?.();
+    toast.success('התנועה עודכנה');
   }
 
   async function handleCancel(id: string, reason: string) {
     await cancelTx(id, reason);
     onTransactionAdded?.();
+    toast.success('התנועה בוטלה');
   }
 
   return (
@@ -145,6 +154,8 @@ export function TuitionModal({ student, onClose, onTransactionAdded }: TuitionMo
       >
         {/* Modal card — scrolls internally */}
         <div
+          ref={dialogRef}
+          aria-label="שכר לימוד"
           onClick={(e) => e.stopPropagation()}
           style={{
             width: '100%', maxWidth: 760,

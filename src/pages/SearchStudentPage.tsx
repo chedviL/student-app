@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo, useDeferredValue } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
 import { useStudents } from "../context/StudentsContext";
 import "./SearchStudentPage.css";
+import { usePersistentState } from "../hooks/usePersistentState";
 
 function normalize(text: string | undefined) {
   return (text || "")
@@ -50,10 +51,12 @@ const itemVariants = {
 
 export default function SearchStudentPage() {
   const { students: allStudents, loading, error } = useStudents();
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = usePersistentState("view:search:query", "");
   const navigate = useNavigate();
 
+  const deferredQuery = useDeferredValue(query);
   const filteredStudents = useMemo(() => {
+    const query = deferredQuery;
     const normalizedQuery = normalize(query);
     const numericQuery = normalizeDigits(query);
 
@@ -93,7 +96,7 @@ export default function SearchStudentPage() {
 
       return true;
     });
-  }, [query, allStudents]);
+  }, [deferredQuery, allStudents]);
 
   return (
     <motion.div

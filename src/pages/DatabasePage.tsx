@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useRef, useEffect } from "react";
+import { useMemo, useState, useCallback, useRef, useEffect, useDeferredValue } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Users, BookOpen, MapPin, Check, X, Loader2, Pencil, Download, UserPlus, GraduationCap, Copy } from "lucide-react";
@@ -11,6 +11,9 @@ import { diffStudent } from "../utils/studentHelpers";
 import { graduateStudent } from "../api/alumniApi";
 import type { Student } from "../types/student";
 import "./DatabasePage.css";
+import { usePersistentState } from "../hooks/usePersistentState";
+import { useDialog } from "../hooks/useDialog";
+import { useToast } from "../context/ToastContext";
 
 // ─── Column definitions ───────────────────────────────────────────────────────
 
@@ -265,14 +268,14 @@ export default function DatabasePage() {
   const { addLocal: addAlumniLocal } = useAlumni();
   const navigate = useNavigate();
 
-  const [query, setQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"lastNameAsc" | "classNameAsc" | "classThenName">("lastNameAsc");
-  const [lastNameFilter, setLastNameFilter] = useState("");
-  const [firstNameFilter, setFirstNameFilter] = useState("");
-  const [classFilter, setClassFilter] = useState<Set<string>>(new Set());
-  const [communityFilter, setCommunityFilter] = useState<Set<string>>(new Set());
-  const [cityFilter, setCityFilter] = useState("");
-  const [boardingFilter, setBoardingFilter] = useState<Set<string>>(new Set());
+  const [query, setQuery] = usePersistentState("view:db:query", "");
+  const [sortBy, setSortBy] = usePersistentState<"lastNameAsc" | "classNameAsc" | "classThenName">("view:db:sortBy", "lastNameAsc");
+  const [lastNameFilter, setLastNameFilter] = usePersistentState("view:db:lastNameFilter", "");
+  const [firstNameFilter, setFirstNameFilter] = usePersistentState("view:db:firstNameFilter", "");
+  const [classFilter, setClassFilter] = usePersistentState<Set<string>>("view:db:classFilter", new Set());
+  const [communityFilter, setCommunityFilter] = usePersistentState<Set<string>>("view:db:communityFilter", new Set());
+  const [cityFilter, setCityFilter] = usePersistentState("view:db:cityFilter", "");
+  const [boardingFilter, setBoardingFilter] = usePersistentState<Set<string>>("view:db:boardingFilter", new Set());
   const [showExportModal, setShowExportModal] = useState(false);
   const [selectedExportFields, setSelectedExportFields] = useState<Set<string>>(
     new Set(COLUMNS.map((c) => c.key))
@@ -285,7 +288,14 @@ export default function DatabasePage() {
   const [graduateDate, setGraduateDate] = useState("");
   const [graduating, setGraduating] = useState(false);
   const [graduateError, setGraduateError] = useState("");
-  const [graduateSuccess, setGraduateSuccess] = useState("");
+  const toast = useToast();
+  const closeGraduate = () => {
+    if (graduating) return;
+    setGraduateTarget(null); setGraduateError(""); setGraduateDate("");
+  };
+  const exportDialogRef   = useDialog(() => setShowExportModal(false), showExportModal);
+  const addDialogRef      = useDialog(() => setShowAddModal(false), showAddModal);
+  const graduateDialogRef = useDialog(closeGraduate, !!graduateTarget);
 
   // ── Row-level edit state ──
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
@@ -329,8 +339,10 @@ export default function DatabasePage() {
       handleSaved(saved);
       setEditingRowId(null);
       setRowDraft({});
-    } catch {
+      toast.success("השינויים נשמרו");
+    } catch (err) {
       // keep edit open on failure
+      toast.error(err instanceof Error ? `השמירה נכשלה: ${err.message}` : "השמירה נכשלה");
     } finally {
       setRowSaving(false);
     }
@@ -347,7 +359,10 @@ export default function DatabasePage() {
   }
 
   // ── filter + search + sort ──
+  // typing stays responsive: the heavy filtering follows the input a moment later
+  const deferredQuery = useDeferredValue(query);
   const displayed = useMemo(() => {
+    const query = deferredQuery;
     let list = localStudents;
     if (lastNameFilter)       list = list.filter((s) => (s.lastName  || "").includes(lastNameFilter));
     if (firstNameFilter)      list = list.filter((s) => (s.firstName || "").includes(firstNameFilter));
@@ -387,7 +402,7 @@ export default function DatabasePage() {
       return cc !== 0 ? cc : cmp(a.lastName || "", b.lastName || "");
     });
     return list;
-  }, [localStudents, query, lastNameFilter, firstNameFilter, classFilter, communityFilter, cityFilter, boardingFilter, sortBy]);
+  }, [localStudents, deferredQuery, lastNameFilter, firstNameFilter, classFilter, communityFilter, cityFilter, boardingFilter, sortBy]);
 
   // ── stats ──
   const stats = useMemo(() => {
@@ -430,6 +445,7 @@ export default function DatabasePage() {
       addLocal(created);
       setShowAddModal(false);
       setNewStudent({});
+      toast.success(`${fullName || "התלמיד"} נוסף בהצלחה`);
     } catch (err) {
       setAddError(err instanceof Error ? err.message : "שגיאה בשמירה");
     } finally {
@@ -451,8 +467,7 @@ export default function DatabasePage() {
       addAlumniLocal(alumnus);
       setGraduateTarget(null);
       setGraduateDate("");
-      setGraduateSuccess(`${student.lastName} ${student.firstName} הועבר לרשימת הבוגרים`);
-      setTimeout(() => setGraduateSuccess(""), 3000);
+      toast.success(`${student.lastName} ${student.firstName} הועבר לרשימת הבוגרים`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "שגיאה בהעברה";
       setGraduateError(msg.includes("כפילות") || msg.includes("unique") ? "בוגר עם ת״ז זו כבר קיים" : msg);
@@ -543,7 +558,7 @@ export default function DatabasePage() {
         {/* ── Export modal ── */}
         {showExportModal && (
           <div className="export-modal-overlay" onClick={() => setShowExportModal(false)}>
-            <div className="export-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="export-modal" ref={exportDialogRef} aria-label="בחירת שדות לייצוא" onClick={(e) => e.stopPropagation()}>
               <h3 className="export-modal-title">בחר שדות לייצוא</h3>
               <div className="export-modal-actions">
                 <button className="export-modal-btn" onClick={() => setSelectedExportFields(new Set(COLUMNS.map((c) => c.key)))}>בחר הכל</button>
@@ -578,7 +593,7 @@ export default function DatabasePage() {
         {/* ── Add student modal ── */}
         {showAddModal && (
           <div className="export-modal-overlay" onClick={() => setShowAddModal(false)}>
-            <div className="export-modal db-add-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="export-modal db-add-modal" ref={addDialogRef} aria-label="הוספת תלמיד חדש" onClick={(e) => e.stopPropagation()}>
               <h3 className="export-modal-title">הוספת תלמיד חדש</h3>
 
               {addError && <div className="edit-feedback error" style={{ marginBottom: 12 }}>{addError}</div>}
@@ -667,16 +682,11 @@ export default function DatabasePage() {
         )}
         {loading && <p className="search-state is-loading" role="status">טוען נתונים...</p>}
         {error   && <p className="search-error">{error}</p>}
-        {graduateSuccess && (
-          <div style={{ textAlign: "center", padding: "10px 16px", background: "rgba(45,90,45,0.1)", border: "1px solid rgba(46,125,50,0.3)", borderRadius: 10, marginBottom: 12, color: "#1b5e20", fontWeight: 700, fontSize: 14 }}>
-            ✔ {graduateSuccess}
-          </div>
-        )}
 
         {/* ── Graduate confirm modal ── */}
         {graduateTarget && (
-          <div className="export-modal-overlay" onClick={() => { if (!graduating) { setGraduateTarget(null); setGraduateError(""); setGraduateDate(""); } }}>
-            <div className="export-modal" style={{ maxWidth: 400, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+          <div className="export-modal-overlay" onClick={closeGraduate}>
+            <div className="export-modal" ref={graduateDialogRef} aria-label="העברה לבוגרים" style={{ maxWidth: 400, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
               <h3 className="export-modal-title">העברה לבוגרים</h3>
               <p style={{ color: "#5b331a", marginBottom: 16, fontSize: 15 }}>
                 האם להעביר את <strong>{graduateTarget.lastName} {graduateTarget.firstName}</strong> לרשימת הבוגרים?
@@ -725,7 +735,7 @@ export default function DatabasePage() {
         {/* ── Table ── */}
         {!loading && !error && (
           <div className="db-table-card">
-            <div className="db-table-scroll">
+            <div className="db-table-scroll" data-scroll-key="students-table">
               <table className="db-table">
                 <thead>
                   <tr>
