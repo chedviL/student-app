@@ -8,6 +8,7 @@ import { updateStudent } from '../../api/studentsApi';
 import { useStudents } from '../../context/StudentsContext';
 import { usePersistentState } from '../../hooks/usePersistentState';
 import { useToast } from '../../context/ToastContext';
+import { useFadeOnChange } from '../../hooks/useFadeOnChange';
 
 type SortKey = 'name' | 'balance';
 type FilterStatus = 'all' | 'debt' | 'ok' | 'attention';
@@ -39,6 +40,8 @@ export default function PaymentsStudentsTable({
   const [filterRank, setFilterRank] = usePersistentState("view:paymentsTable:filterRank", '');
   const [sortKey, setSortKey] = usePersistentState<SortKey>("view:paymentsTable:sortKey", 'name');
   const [sortAsc, setSortAsc] = usePersistentState("view:paymentsTable:sortAsc", true);
+  // gentle fade of the rows when a filter or the sort changes (not on every keystroke)
+  const rowsRef = useFadeOnChange<HTMLTableSectionElement>(JSON.stringify([filterStatus, filterCurrency, filterRank, sortKey, sortAsc]));
   const [showModal, setShowModal] = useState(false);
 
   // ── Row-level edit state ──
@@ -195,7 +198,7 @@ export default function PaymentsStudentsTable({
               <th style={{ padding: '8px 12px', textAlign: 'center', position: 'sticky', top: 0, background: 'rgba(255,253,248,0.97)', zIndex: 2 }}>סטטוס</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody ref={rowsRef}>
             {filtered.length === 0 && (
               <tr><td colSpan={10} style={{ textAlign: 'center', padding: 24, color: '#8b6544' }}>לא נמצאו תלמידים</td></tr>
             )}

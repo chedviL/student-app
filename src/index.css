@@ -1049,3 +1049,38 @@ input {
 @media (prefers-reduced-motion: reduce) {
   .export-modal-overlay, .dialog-backdrop, .export-modal, .dialog-card { animation: none; }
 }
+
+/* ===== Press feedback for every button =====
+   Uses the standalone `scale` property, so it never conflicts with a
+   button's own `transform` (hover lifts, framer-motion, etc.). */
+button {
+  transition-property: scale, background-color, border-color, color, box-shadow, opacity, transform;
+  transition-duration: 0.12s;
+  transition-timing-function: ease-out;
+}
+
+button:not(:disabled):active {
+  scale: 0.97;
+}
+
+/* small icon buttons need a slightly stronger press to be felt */
+.db-card-btn:not(:disabled):active,
+.db-edit-row-btn:not(:disabled):active,
+.toast-close:active,
+.home-dot:active {
+  scale: 0.9;
+}
+
+/* visible keyboard focus everywhere (mouse clicks stay clean) */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button:not(:disabled):active { scale: 1; }
+}

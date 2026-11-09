@@ -11,6 +11,7 @@ import { formatDate } from "../utils/dateHelpers";
 import "./AlumniPage.css";
 import { useGoBack } from '../hooks/useGoBack';
 import { useToast } from "../context/ToastContext";
+import { SkeletonProfile } from "../components/common/Skeleton";
 
 function fmtDate(val: string | undefined): string {
   if (!val) return "";
@@ -167,8 +168,8 @@ export default function AlumniCardPage() {
 
   /* ── states ── */
   if (loading) return (
-    <div className="al-page with-navbar" style={{ display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <Loader2 size={32} style={{ color: "#64748b", animation: "spin 1s linear infinite" }} />
+    <div className="al-page with-navbar" style={{ padding: "84px 18px 40px" }}>
+      <SkeletonProfile label="טוען כרטיס בוגר..." />
     </div>
   );
 

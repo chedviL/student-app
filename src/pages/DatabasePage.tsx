@@ -14,6 +14,8 @@ import "./DatabasePage.css";
 import { usePersistentState } from "../hooks/usePersistentState";
 import { useDialog } from "../hooks/useDialog";
 import { useToast } from "../context/ToastContext";
+import { useFadeOnChange } from "../hooks/useFadeOnChange";
+import { SkeletonTable } from "../components/common/Skeleton";
 
 // ─── Column definitions ───────────────────────────────────────────────────────
 
@@ -361,6 +363,8 @@ export default function DatabasePage() {
   // ── filter + search + sort ──
   // typing stays responsive: the heavy filtering follows the input a moment later
   const deferredQuery = useDeferredValue(query);
+  // gentle fade of the rows when a filter or the sort changes (not on every keystroke)
+  const rowsRef = useFadeOnChange<HTMLTableSectionElement>(JSON.stringify([sortBy, lastNameFilter, firstNameFilter, [...classFilter], [...communityFilter], cityFilter, [...boardingFilter]]));
   const displayed = useMemo(() => {
     const query = deferredQuery;
     let list = localStudents;
@@ -486,13 +490,15 @@ export default function DatabasePage() {
             : c.key === 'tuition' ? 'number'
             : undefined,
       }));
+    setShowExportModal(false);
     exportToExcel(
       displayed as unknown as Record<string, unknown>[],
       exportCols,
       'תלמידים',
       `רשימת_תלמידים_${todayStr()}.xlsx`,
-    );
-    setShowExportModal(false);
+    )
+      .then(() => toast.success("הקובץ ירד בהצלחה"))
+      .catch(() => toast.error("הייצוא נכשל, נסה שוב"));
   }
 
   return (
@@ -680,7 +686,7 @@ export default function DatabasePage() {
             </div>
           </div>
         )}
-        {loading && <p className="search-state is-loading" role="status">טוען נתונים...</p>}
+        {loading && <SkeletonTable rows={10} cols={7} label="טוען תלמידים..." />}
         {error   && <p className="search-error">{error}</p>}
 
         {/* ── Graduate confirm modal ── */}
@@ -767,7 +773,7 @@ export default function DatabasePage() {
                     <th className="db-th-link">עזב</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody ref={rowsRef}>
                   <AnimatePresence>
                     {displayed.map((student, idx) => {
                       const isEditing = editingRowId === student.id;

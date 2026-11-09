@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx';
 
 export type ExportColDef = {
   key: string;
@@ -44,12 +43,17 @@ function formatCellValue(raw: unknown, type?: ExportColDef['type']): string | nu
   return str;
 }
 
-export function exportToExcel<T extends Record<string, unknown>>(
+/**
+ * The xlsx library (~280KB) is loaded only when the user actually exports,
+ * so it never slows down opening the app or the list pages.
+ */
+export async function exportToExcel<T extends Record<string, unknown>>(
   rows: T[],
   cols: ExportColDef[],
   sheetName: string,
   fileName: string,
-) {
+): Promise<void> {
+  const XLSX = await import('xlsx');
   const headers = cols.map((c) => c.label);
 
   const dataRows = rows.map((row) =>

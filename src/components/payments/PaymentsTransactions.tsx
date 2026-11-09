@@ -1,10 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Loader2 } from 'lucide-react';
 import { getAllTransactions } from '../../api/tuitionApi';
 import type { TxWithPerson } from '../../api/tuitionApi';
 import { fmtDate, txTypeLabel } from '../tuition/TuitionSection';
 import type { TransactionType } from '../../types/tuition';
 import type { Student } from '../../types/student';
+import { SkeletonTable } from '../common/Skeleton';
 
 const TX_TYPES: { value: string; label: string }[] = [
   { value: '', label: 'כל הסוגים' },
@@ -96,10 +96,7 @@ export default function PaymentsTransactions({ students }: { students: Student[]
       </div>
 
       {loading && (
-        <div style={{ textAlign: 'center', padding: 32, color: '#8b6544' }}>
-          <Loader2 size={20} className="spin" style={{ display: 'inline-block', verticalAlign: 'middle', marginLeft: 8 }} />
-          טוען תנועות...
-        </div>
+        <SkeletonTable rows={8} cols={6} label="טוען תנועות..." />
       )}
       {error && <p style={{ color: '#c62828', textAlign: 'center' }}>{error}</p>}
 

@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { getAllBalances, summariseBalances, getRecentTransactions } from '../../api/tuitionApi';
 import type { TxWithPerson } from '../../api/tuitionApi';
 import { fmtDate, txTypeLabel } from '../tuition/TuitionSection';
 import type { TuitionBalance, AllBalancesSummary } from '../../types/tuition';
 import type { Student } from '../../types/student';
 import ManualPaymentModal from './ManualPaymentModal';
+import { SkeletonTable } from '../common/Skeleton';
 
 const card: React.CSSProperties = {
   background: 'rgba(255,253,248,0.97)',
@@ -98,10 +99,7 @@ export default function PaymentsOverview({
   }
 
   if (loading) return (
-    <div style={{ textAlign: 'center', padding: 40, color: '#8b6544' }}>
-      <Loader2 size={22} className="spin" style={{ display: 'inline-block', verticalAlign: 'middle', marginLeft: 8 }} />
-      טוען נתונים...
-    </div>
+    <SkeletonTable rows={8} cols={6} label="טוען נתוני תשלומים..." />
   );
 
   if (error) return <p style={{ color: '#c62828', textAlign: 'center', padding: 24 }}>{error}</p>;

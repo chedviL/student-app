@@ -15,6 +15,7 @@ import "./SearchStudentPage.css";
 import { useGoBack } from '../hooks/useGoBack';
 import { useDialog } from '../hooks/useDialog';
 import { useToast } from "../context/ToastContext";
+import { SkeletonProfile } from "../components/common/Skeleton";
 
 function fmtDate(val: string | undefined): string {
   if (!val) return "";
@@ -229,7 +230,7 @@ export default function StudentCardPage() {
     return (
       <div className="search-page with-navbar">
         <div className="search-shell">
-          <p className="search-state is-loading" role="status">טוען כרטיס תלמיד...</p>
+          <SkeletonProfile label="טוען כרטיס תלמיד..." />
         </div>
       </div>
     );
