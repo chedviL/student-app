@@ -6,8 +6,8 @@ import { useStudents } from "../context/StudentsContext";
 import { useAlumni } from "../context/AlumniContext";
 import { updateStudent } from "../api/studentsApi";
 import { diffStudent } from "../utils/studentHelpers";
-import { describeStartDateChange } from "../constants/tuitionPolicy";
-import type { StartDateChangeExplanation } from "../constants/tuitionPolicy";
+import { describeBulkStartDateChange } from "../constants/tuitionPolicy";
+import type { StartDateChangeGroup } from "../constants/tuitionPolicy";
 import StartDateChangeDialog from "../components/tuition/StartDateChangeDialog";
 import { graduateStudent } from "../api/alumniApi";
 import type { Student } from "../types/student";
@@ -180,7 +180,7 @@ export default function StudentCardPage() {
     setSaveError("");
   }
 
-  const [dateConfirm, setDateConfirm] = useState<StartDateChangeExplanation | null>(null);
+  const [dateConfirm, setDateConfirm] = useState<StartDateChangeGroup[] | null>(null);
 
   async function saveEdit() {
     if (!student) return;
@@ -191,7 +191,7 @@ export default function StudentCardPage() {
       return;
     }
     if ("tuitionStartDate" in patch) {
-      setDateConfirm(describeStartDateChange(student.tuitionStartDate, patch.tuitionStartDate));
+      setDateConfirm(describeBulkStartDateChange([student.tuitionStartDate], patch.tuitionStartDate));
       return;
     }
     await commitEdit(patch);
@@ -418,7 +418,7 @@ export default function StudentCardPage() {
 
           {dateConfirm && student && (
             <StartDateChangeDialog
-              explanation={dateConfirm}
+              groups={dateConfirm}
               busy={saving}
               onConfirm={() => commitEdit(diffStudent(student, draft))}
               onCancel={() => setDateConfirm(null)}

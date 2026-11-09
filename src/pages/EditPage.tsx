@@ -8,8 +8,8 @@ import {
 } from "lucide-react";
 import { useStudents } from "../context/StudentsContext";
 import { updateStudent } from "../api/studentsApi";
-import { describeStartDateChange } from "../constants/tuitionPolicy";
-import type { StartDateChangeExplanation } from "../constants/tuitionPolicy";
+import { describeBulkStartDateChange } from "../constants/tuitionPolicy";
+import type { StartDateChangeGroup } from "../constants/tuitionPolicy";
 import StartDateChangeDialog from "../components/tuition/StartDateChangeDialog";
 import type { Student } from "../types/student";
 import "./EditPage.css";
@@ -301,7 +301,7 @@ export function EditForm({
   }
 
   // Start-date changes need an explicit confirmation that explains the consequences.
-  const [dateConfirm, setDateConfirm] = useState<{ explanation: StartDateChangeExplanation; count: number } | null>(null);
+  const [dateConfirm, setDateConfirm] = useState<StartDateChangeGroup[] | null>(null);
 
   async function save() {
     // check at least one field has a value
@@ -319,10 +319,11 @@ export function EditForm({
         return v !== undefined && v !== (st.tuitionStartDate ?? "");
       });
       if (affected.length > 0) {
-        setDateConfirm({
-          explanation: describeStartDateChange(affected[0].tuitionStartDate, resolveValue("tuitionStartDate", affected[0])),
-          count: affected.length,
-        });
+        // consequences for EVERY distinct current date among the affected students
+        setDateConfirm(describeBulkStartDateChange(
+          affected.map((st) => st.tuitionStartDate),
+          resolveValue("tuitionStartDate", affected[0]),
+        ));
         return;
       }
     }
@@ -370,8 +371,7 @@ export function EditForm({
     <div className="edit-form-wrap">
       {dateConfirm && (
         <StartDateChangeDialog
-          explanation={dateConfirm.explanation}
-          affectedCount={dateConfirm.count}
+          groups={dateConfirm}
           busy={saving}
           onConfirm={doSave}
           onCancel={() => setDateConfirm(null)}

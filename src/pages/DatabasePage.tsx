@@ -8,7 +8,9 @@ import { useStudents } from "../context/StudentsContext";
 import { useAlumni } from "../context/AlumniContext";
 import { updateStudent, createStudent } from "../api/studentsApi";
 import { diffStudent } from "../utils/studentHelpers";
-import { DEFAULT_TUITION_START_DATE, describeStartDateChange } from "../constants/tuitionPolicy";
+import { describeStartDateChange, describeBulkStartDateChange, suggestStartDate, formatHe } from "../constants/tuitionPolicy";
+import type { StartDateChangeGroup } from "../constants/tuitionPolicy";
+import StartDateChangeDialog from "../components/tuition/StartDateChangeDialog";
 import { graduateStudent } from "../api/alumniApi";
 import type { Student } from "../types/student";
 import "./DatabasePage.css";
@@ -418,11 +420,28 @@ export default function DatabasePage() {
     setCityFilter(""); setBoardingFilter(new Set());
   }
 
+  // New student: the start date is an explicit choice (suggestion offered), never a silent default.
+  const [noDateAck, setNoDateAck] = useState(false);
+  const [newDateConfirm, setNewDateConfirm] = useState<StartDateChangeGroup[] | null>(null);
+
   async function saveNewStudent() {
     if (!newStudent.firstName?.trim() && !newStudent.lastName?.trim()) {
       setAddError("נדרש לפחות שם פרטי או שם משפחה");
       return;
     }
+    if (!newStudent.tuitionStartDate) {
+      if (!noDateAck) {
+        setAddError("לא נבחר תאריך תחילת גבייה. בחרו תאריך, או סמנו במפורש שהתלמיד ייווצר ללא תאריך.");
+        return;
+      }
+      await createNewStudent();
+      return;
+    }
+    setNewDateConfirm(describeBulkStartDateChange([null], newStudent.tuitionStartDate));
+  }
+
+  async function createNewStudent() {
+    setNewDateConfirm(null);
     setAddSaving(true);
     setAddError("");
     try {
@@ -535,7 +554,7 @@ export default function DatabasePage() {
               <button className="db-export-btn" onClick={() => setShowExportModal(true)}>
                 <Download size={15} /> ייצוא
               </button>
-              <button className="db-add-btn" onClick={() => { setNewStudent({ tuitionStartDate: DEFAULT_TUITION_START_DATE }); setAddError(""); setShowAddModal(true); }}>
+              <button className="db-add-btn" onClick={() => { setNewStudent({}); setNoDateAck(false); setAddError(""); setShowAddModal(true); }}>
                 <UserPlus size={15} /> הוסף תלמיד
               </button>
             </div>
@@ -659,15 +678,36 @@ export default function DatabasePage() {
                   <label className="edit-label">תאריך תחילת גבייה</label>
                   <input className="edit-input" type="date" dir="ltr" data-testid="new-student-start-date"
                     value={newStudent.tuitionStartDate ?? ""}
-                    onChange={(e) => setNewStudent((p) => ({ ...p, tuitionStartDate: e.target.value }))} />
+                    onChange={(e) => { setNewStudent((p) => ({ ...p, tuitionStartDate: e.target.value })); setNoDateAck(false); }} />
+                  {!newStudent.tuitionStartDate && (
+                    <button type="button" data-testid="suggest-start-date"
+                      onClick={() => setNewStudent((p) => ({ ...p, tuitionStartDate: suggestStartDate() }))}
+                      style={{ marginTop: 6, background: "#fffaf0", border: "1px solid #e2cfa9", borderRadius: 10, padding: "4px 10px", fontSize: 12.5, fontWeight: 700, color: "#8b4f1f", cursor: "pointer" }}>
+                      הצעה: {formatHe(suggestStartDate())} — חודש החיוב הקרוב (יש לוודא שזה מועד תחילת החיוב בפועל)
+                    </button>
+                  )}
                   <div style={{ fontSize: 12, color: newStudent.tuitionStartDate ? "#8b6544" : "#b71c1c", marginTop: 4, lineHeight: 1.5 }}>
                     {newStudent.tuitionStartDate
                       ? describeStartDateChange(null, newStudent.tuitionStartDate).consequences.join(" ")
                       : "בלי תאריך — התלמיד לא יחויב בחיוב החודשי."}
                   </div>
+                  {!newStudent.tuitionStartDate && (
+                    <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12.5, marginTop: 6, color: "#5b331a" }}>
+                      <input type="checkbox" data-testid="no-date-ack" checked={noDateAck} onChange={(e) => setNoDateAck(e.target.checked)} />
+                      אני מאשר/ת ליצור את התלמיד ללא תאריך — הוא לא יחויב עד שייקבע תאריך
+                    </label>
+                  )}
                 </div>
               </div>
 
+              {newDateConfirm && (
+                <StartDateChangeDialog
+                  groups={newDateConfirm}
+                  busy={addSaving}
+                  onConfirm={createNewStudent}
+                  onCancel={() => setNewDateConfirm(null)}
+                />
+              )}
               <div className="export-modal-footer" style={{ marginTop: 20 }}>
                 <button className="db-add-btn" onClick={saveNewStudent} disabled={addSaving}>
                   {addSaving ? <Loader2 size={15} className="spin" /> : <Check size={15} />}

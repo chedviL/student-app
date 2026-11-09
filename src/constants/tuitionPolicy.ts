@@ -1,23 +1,27 @@
 // ─── מדיניות תאריך תחילת גבייה ───────────────────────────────────────────────
 // מקור אמת יחיד לכללים ולהסברים שמוצגים למזכירות. שינוי מדיניות — כאן בלבד.
 
-/** התאריך שנקבע לכל התלמידים (החלטת הלקוחה, 08.11.2026). */
-export const DEFAULT_TUITION_START_DATE = '2026-08-20';
+/** תאריך תחילת השנה (20.08.2026) — מוצג כמידע בלבד; לא מוגדר אוטומטית לאף תלמיד. */
+export const SCHOOL_YEAR_START_DATE = '2026-08-20';
 
-/** החיוב החודשי רץ ב-21 לחודש ב-02:00 UTC עבור החודש הנוכחי (ערך החיוב 20, ערך הזיכוי 21). */
+/**
+ * החיוב החודשי: pg_cron ‏'0 2 21 * *' עם cron.timezone=GMT — כלומר ב-21 לחודש ב-02:00 UTC
+ * (04:00 שעון חורף / 05:00 שעון קיץ בישראל), עבור החודש של current_date ב-UTC.
+ */
 export const CHARGE_RUN_DAY = 21;
+export const CHARGE_RUN_HOUR_UTC = 2;
 
 export const AUTO_CREDIT_RANKS_TEXT = 'אשראי, בנקאי, קירוב לבבות, מרכז הצדקה';
 
 export const START_DATE_POLICY: readonly string[] = [
-  `לכל תלמיד חייב להיות תאריך תחילת גבייה. ברירת המחדל היא ${formatHe(DEFAULT_TUITION_START_DATE)} — התאריך של כל התלמידים.`,
-  'תלמיד שמצטרף באמצע השנה: התאריך הוא ה-20 בחודש שבו מתחיל החיוב שלו.',
+  'תאריך תחילת הגבייה חייב לשקף את תחילת החיוב האמיתית של התלמיד. אין לקבוע תאריך "ברירת מחדל" בלי לבדוק את זכאותו ואת מועד תחילת החיוב שלו.',
+  'תלמיד בלי תאריך לא מחויב בחיוב החודשי — יש לבדוק כל מקרה ולקבוע תאריך פרטני.',
   `החיוב החודשי נוצר אוטומטית ב-${CHARGE_RUN_DAY} לכל חודש, עבור החודש הנוכחי בלבד. זיכוי אוטומטי ניתן רק לדירוגים: ${AUTO_CREDIT_RANKS_TEXT}.`,
-  'שינוי תאריך משפיע רק מהחיוב הבא. הוא לא יוצר ולא מבטל חיובים שכבר נוצרו.',
-  'חודשים קודמים שלא חויבו: חיוב ידני לכל חודש, עם הערה "חודש MM/YY", לאחר אישור המנהלת.',
-  'חיוב שנוצר לפני שהתלמיד היה אמור להתחיל: ביטול התנועה (לא מחיקה) עם סיבה.',
+  'שינוי תאריך אינו מתקן תנועות היסטוריות אוטומטית — הוא משפיע רק מהחיוב הבא.',
+  'השלמת חודשים קודמים תבוצע רק לאחר בדיקת כפילויות ואישור המנהלת, באמצעות חיוב ידני מתועד או שחזור מבוקר.',
+  'אין למחוק תנועות כספיות קיימות. תיקונים יתועדו באמצעות ביטול התנועה עם סיבה.',
   'אין למחוק תאריך התחלה (המערכת חוסמת זאת). תלמיד שהפסיק לשלם: שכר לימוד 0 או העברה לבוגרים.',
-  'שינוי תאריך לקבוצת תלמידים: רק לאחר בדיקה — המערכת מציגה כמה תלמידים יושפעו.',
+  'שינוי תאריך לקבוצת תלמידים: רק לאחר בדיקה — המערכת מציגה את ההשלכות לכל קבוצת תלמידים בנפרד.',
 ];
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -46,15 +50,26 @@ function monthsBetween(fromIdx: number, toIdxExclusive: number): string[] {
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
-/** The next automatic run (21st of this month, or of next month if already past). */
-export function nextChargeRun(today: Date): { date: string; monthIdx: number } {
-  const y = today.getFullYear();
-  const m = today.getMonth();
-  const passed = today.getDate() > CHARGE_RUN_DAY || (today.getDate() === CHARGE_RUN_DAY && today.getHours() >= 5);
-  const idx = y * 12 + m + (passed ? 1 : 0);
+/**
+ * The next automatic run, computed exactly like pg_cron: the 21st at 02:00 UTC.
+ * Independent of the browser's time zone. `israelTime` is for display only.
+ */
+export function nextChargeRun(now: Date): { date: string; monthIdx: number; israelTime: string; runAt: Date } {
+  const y = now.getUTCFullYear();
+  const m = now.getUTCMonth();
+  const thisRun = Date.UTC(y, m, CHARGE_RUN_DAY, CHARGE_RUN_HOUR_UTC, 0, 0);
+  const idx = y * 12 + m + (now.getTime() >= thisRun ? 1 : 0);
+  const runAt = new Date(Date.UTC(Math.floor(idx / 12), idx % 12, CHARGE_RUN_DAY, CHARGE_RUN_HOUR_UTC));
   const yy = Math.floor(idx / 12);
   const mm = String((idx % 12) + 1).padStart(2, '0');
-  return { date: `${CHARGE_RUN_DAY}.${mm}.${yy}`, monthIdx: idx };
+  const israelTime = new Intl.DateTimeFormat('he-IL', { timeZone: 'Asia/Jerusalem', hour: '2-digit', minute: '2-digit', hour12: false }).format(runAt);
+  return { date: `${CHARGE_RUN_DAY}.${mm}.${yy}`, monthIdx: idx, israelTime, runAt };
+}
+
+/** Suggested start date for a NEW student: the 20th of the month the next run will charge. Must be confirmed explicitly. */
+export function suggestStartDate(now: Date = new Date()): string {
+  const { monthIdx } = nextChargeRun(now);
+  return `${Math.floor(monthIdx / 12)}-${String((monthIdx % 12) + 1).padStart(2, '0')}-20`;
 }
 
 export type StartDateChangeKind = 'blocked' | 'invalid' | 'no_effect' | 'set_new' | 'later' | 'earlier';
@@ -94,7 +109,7 @@ export function describeStartDateChange(
   const newIdx = monthIndex(after);
   const firstCharge = newIdx >= run.monthIdx
     ? `החיוב האוטומטי הראשון: ${CHARGE_RUN_DAY}.${after.slice(5, 7)}.${after.slice(0, 4)} (עבור ${monthLabel(newIdx)}).`
-    : `התלמיד ייכלל בחיוב הבא: ${run.date} (עבור ${monthLabel(run.monthIdx)}).`;
+    : `התלמיד ייכלל בחיוב הבא: ${run.date} בשעה ${run.israelTime} (עבור ${monthLabel(run.monthIdx)}).`;
 
   if (!before) {
     const missed = newIdx < run.monthIdx ? monthsBetween(newIdx, run.monthIdx) : [];
@@ -152,4 +167,29 @@ export function describeStartDateChange(
       ? ['אם התלמיד היה אמור לשלם על החודשים האלה — חיוב ידני לכל חודש עם הערה "חודש MM/YY", לאחר אישור המנהלת.']
       : [],
   };
+}
+
+export interface StartDateChangeGroup {
+  oldDate: string | null;
+  count: number;
+  explanation: StartDateChangeExplanation;
+}
+
+/**
+ * Bulk change: students may have different current dates, so the consequences are
+ * computed for EVERY distinct current date (not only the first student's).
+ */
+export function describeBulkStartDateChange(
+  currentDates: ReadonlyArray<string | null | undefined>,
+  newDate: string | null | undefined,
+  today: Date = new Date(),
+): StartDateChangeGroup[] {
+  const counts = new Map<string | null, number>();
+  for (const d of currentDates) {
+    const k = d && ISO.test(d) ? d : null;
+    counts.set(k, (counts.get(k) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort(([a], [b]) => (a ?? '').localeCompare(b ?? ''))
+    .map(([oldDate, count]) => ({ oldDate, count, explanation: describeStartDateChange(oldDate, newDate, today) }));
 }
